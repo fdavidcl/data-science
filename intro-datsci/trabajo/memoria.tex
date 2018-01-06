@@ -1,0 +1,391 @@
+%%%
+% Plantilla de Memoria
+% Modificación de una plantilla de Latex de Nicolas Diaz para adaptarla 
+% al castellano y a las necesidades de escribir informática y matemáticas.
+%
+% Editada por: Mario Román
+%
+% License:
+% CC BY-NC-SA 3.0 (http://creativecommons.org/licenses/by-nc-sa/3.0/)
+%%%
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Thin Sectioned Essay
+% LaTeX Template
+% Version 1.0 (3/8/13)
+%
+% This template has been downloaded from:
+% http://www.LaTeXTemplates.com
+%
+% Original Author:
+% Nicolas Diaz (nsdiaz@uc.cl) with extensive modifications by:
+% Vel (vel@latextemplates.com)
+%
+% License:
+% CC BY-NC-SA 3.0 (http://creativecommons.org/licenses/by-nc-sa/3.0/)
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%----------------------------------------------------------------------------------------
+%	PAQUETES Y CONFIGURACIÓN DEL DOCUMENTO
+%----------------------------------------------------------------------------------------
+
+%%% Configuración del papel.
+% microtype: Tipografía.
+% mathpazo: Usa la fuente Palatino.
+\documentclass[a4paper, 11pt]{article}
+\usepackage[protrusion=true,expansion=true]{microtype}
+\usepackage{mathpazo}
+
+% Indentación de párrafos para Palatino
+\setlength{\parindent}{0pt}
+  \parskip=8pt
+\linespread{1.05} % Change line spacing here, Palatino benefits from a slight increase by default
+
+
+%%% Castellano.
+% noquoting: Permite uso de comillas no españolas.
+% lcroman: Permite la enumeración con numerales romanos en minúscula.
+% fontenc: Usa la fuente completa para que pueda copiarse correctamente del pdf.
+\usepackage[spanish,es-noquoting,es-lcroman]{babel}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\selectlanguage{spanish}
+
+
+%%% Gráficos
+\usepackage{graphicx} % Required for including pictures
+\usepackage{subcaption}
+\usepackage{wrapfig} % Allows in-line images
+\usepackage[usenames,dvipsnames]{color} % Coloring code
+\usepackage{floatrow}
+
+\usepackage{hyperref}
+\usepackage{verbatim}
+\usepackage{fancyvrb}
+\def\Semicolon{\char59}
+\catcode`;=\active
+\fvset{frame=lines,numbers=left,fontsize=\small,numbersep=3pt,defineactive=\def;{\color{Orchid}\itshape}}
+
+%%% Matemáticas
+\usepackage{amsmath}
+
+
+%%% Bibliografía
+\makeatletter
+\renewcommand\@biblabel[1]{\textbf{#1.}} % Change the square brackets for each bibliography item from '[1]' to '1.'
+\renewcommand{\@listI}{\itemsep=0pt} % Reduce the space between items in the itemize and enumerate environments and the bibliography
+
+
+
+%----------------------------------------------------------------------------------------
+%	TÍTULO
+%----------------------------------------------------------------------------------------
+% Configuraciones para el título.
+% El título no debe editarse aquí.
+\renewcommand{\maketitle}{
+  \begin{flushright} % Right align
+  
+  {\LARGE\@title} % Increase the font size of the title
+  
+  \vspace{50pt} % Some vertical space between the title and author name
+  
+  {\large\@author} % Author name
+  \\\@date % Date
+  \vspace{40pt} % Some vertical space between the author block and abstract
+  \end{flushright}
+}
+
+%% Título
+\title{\textbf{Trabajo teórico/práctico}\\ % Title
+Introducción a la Ciencia de Datos} % Subtitle
+
+\author{Francisco David \textsc{Charte Luque} % Author
+\\{\textit{Universidad de Granada}}} % Institution
+
+\date{\today} % Date
+
+
+
+%----------------------------------------------------------------------------------------
+%	DOCUMENTO
+%----------------------------------------------------------------------------------------
+
+\begin{document}
+
+\maketitle % Print the title section
+
+%% Resumen (Descomentar para usarlo)
+\renewcommand{\abstractname}{Resumen} % Uncomment to change the name of the abstract to something else
+%\begin{abstract}
+% Resumen aquí
+%\end{abstract}
+
+%% Palabras clave
+%\hspace*{3,6mm}\textit{Keywords:} lorem , ipsum , dolor , sit amet , lectus % Keywords
+%\vspace{30pt} % Some vertical space between the abstract and first section
+
+
+%% Índice
+{\parskip=2pt
+  \tableofcontents
+}
+\clearpage
+
+%%% Inicio del documento
+
+\section{Análisis de datos}
+
+\subsection{Dataset de regresión: abalone}
+
+\begin{wrapfigure}{r}{0.5\textwidth}
+  \centering
+  \includegraphics[width=\textwidth]{haliotis.jpg}
+  \caption{\label{abalone}Concha de abulón \textit{Haliotis rubra}. Imagen de Peter Southwood/Wikimedia Commons (CC BY-SA).}
+\end{wrapfigure}
+
+El dataset \textit{abalone}\footnote{\url{https://archive.ics.uci.edu/ml/datasets/Abalone}} abarca diferentes medidas físicas de conchas de abulón (figura~\ref{abalone}) provinientes de Tasmania, y su objetivo es predecir la edad de la concha. El método experto para determinar la edad consiste en cortar y tintar la concha, para después contar el número de anillos mediante un microscopio.
+
+La variable objetivo del dataset no es realmente la edad de cada individuo, sino el número de anillos, \textit{Rings}. Sumando 1.5 a este número se puede obtener la edad en años. Esta variable oscila entre 1 y 29, con la mitad de las conchas presentando entre 8 y 11 anillos.
+
+\textit{abalone} comprende 4177 instancias y 8 variables regresoras, de las cuales una es nominal y el resto numéricas:
+\begin{enumerate}
+\item \textit{Sex}: el sexo del abulón, con 3 posibles valores: \textit{male}, \textit{female} e \textit{infant}.
+\item \textit{Length}: longitud máxima en milímetros.
+\item \textit{Diameter}: longitud perpendicular a la máxima en milímetros.
+\item \textit{Height}: altura de la concha en milímetros.
+\item \textit{Whole\_weight}: peso completo del individuo en gramos.
+\item \textit{Shucked\_weight}: peso de la carne en gramos.
+\item \textit{Viscera\_weight}: peso de las vísceras en gramos.
+\item \textit{Shell\_weight}: peso de la concha tras secar en gramos.
+\end{enumerate}
+
+El dataset se proporciona en formato \texttt{.dat} de KEEL, por lo que para cargarlo en R previamente se ha convertido al formato ARFF de Weka mediante el código listado en el apéndice~\ref{sec:code:conv}. Al cargarlo en la sesión de R se extrae un \texttt{data.frame} de 4177 filas y 9 columnas, y es necesario ajustar la primera variable a tipo \texttt{factor}. Se han convertido los valores de la variable \textit{Sex} a los de la documentación original (identificándolos mediante correspondencia de instancias con el mismo valor de \textit{Rings}, ya que hay valores para los que solo existe una sola instancia) para facilitar la interpretabilidad en la medida de lo posible.
+
+La tabla~\ref{tbl:cuenta} resume la distribución de la variable nominal \textit{Sex}, y en la tabla~\ref{tbl:medidas} se describen las variables numéricas mediante las medidas de centralización y dispersión básicas.
+
+\begin{table}[ht]
+  \caption{\label{tbl:cuenta}Distribución de la variable \textit{Sex} en \textit{abalone}.}
+  
+  \begin{tabular}[c]{l||r}
+    Valor & Ocurrencias \\
+    \hline
+    M & 1528 \\
+    F & 1307 \\
+    I & 1342
+  \end{tabular}
+\end{table}
+
+\begin{table}[ht]
+  \caption{\label{tbl:medidas}Medidas de centralización y dispersión de las variables numéricas de \textit{abalone}.}
+  
+  \begin{tabular}[c]{l||r|r|r|r|r|r|r}
+    Nombre & Mín & 1Q & Med & 3Q & Máx & Media & Desv \\
+    \hline
+    Length & 0.0750 & 0.4500 & 0.5450 & 0.6150 & 0.8150 & 0.5240 & 0.120 \\
+    Diameter & 0.0550 & 0.3500 & 0.4250 & 0.4800 & 0.6500 & 0.4079 & 0.099 \\
+    Height & 0 & 0.1150 & 0.1400 & 0.1650 & 1.1300 & 0.1395 & 0.042 \\
+    Whole... & 0.0020 & 0.4415 & 0.7995 & 1.1530 & 2.8255 & 0.8287 & 0.490 \\
+    Shucked... & 0.0010 & 0.1860 & 0.3360 & 0.5020 & 1.4880 & 0.3594 & 0.222 \\
+    Viscera... & 0.0005 & 0.0935 & 0.1710 & 0.2530 & 0.7600 & 0.1806 & 0.110 \\
+    Shell... & 0.0015 & 0.1300 & 0.1340 & 0.3290 & 1.0050 & 0.2388 & 0.139 \\
+    Rings & 1 & 8 & 9 & 11 & 29 & 9.9340 & 3.224 
+  \end{tabular}
+\end{table}
+
+Primero, observaremos la distribución de la edad de los individuos, dada por la variable \textit{Rings}. Se ha plasmado en la figura~\ref{fig:rings}, donde observamos que la moda corresponde a 9 anillos, lo que podemos identificar como una edad mediana para un individuo. La distribución es algo asimétrica, con una cola a la derecha donde se encuentran los individuos más longevos. El rango de 20 a 29 anillos contiene muy pocos individuos, pudiendo considerarse excepcionalmente longevos. Es probable que al realizar regresión para predecir un número de anillos sea difícil llegar a este rango, puesto que la gran mayoría de individuos se concentran en el resto del intervalo.
+
+\begin{figure}[ht]
+  \includegraphics[width=0.7\textwidth]{11.pdf}
+  \caption{\label{fig:rings}Distribución del número de anillos de los individuos. Los colores corresponden a los que se usarán en gráficos posteriores para denotar esta variable.}
+  
+\end{figure}
+
+Entre los regresores, comenzamos estudiando la única variable nominal, \textit{Sex}. Por la distribución de los datos, se observa que está relativamente balanceada, con solamente algunos ejemplos de la categoría \textit{male}. Esto es visible también en el gráfico \ref{fig:bars-sex}, que además relaciona la variable con el número de anillos y aporta una intuición que se puede confirmar con el gráfico \ref{fig:boxplot-sex}: los individuos adultos (no marcados como \textit{I}) presentan una distribución de número de anillos muy similar.
+\begin{figure}[ht]
+  \begin{subfigure}{0.48\textwidth}
+    \centering
+    \includegraphics[width=\textwidth]{02.pdf}
+    \caption{\label{fig:bars-sex}Gráfico de barras con la distribución del sexo de los individuos y coloreado por número de anillos.}
+  \end{subfigure}
+  \hfill
+  \begin{subfigure}{0.48\textwidth}
+    \centering
+    \includegraphics[width=\textwidth]{01.pdf}
+    \caption{\label{fig:boxplot-sex}Boxplot mostrando la distribución del número de anillos respecto del sexo.}
+  \end{subfigure}
+  \caption{\label{fig:sex}Gráficos relacionando el sexo y el número de anillos.}
+\end{figure}
+
+
+Podemos deducir de lo anterior que el sexo en sí no será un factor determinante a la hora de predecir la edad, pero sí lo será la categorización como \textit{infant}. El boxplot además nos indica la presencia de outliers por la parte superior, es decir, unos pocos ejemplos de individuos muy longevos respecto del resto.
+
+En la figura~\ref{fig:hist-num} se ilustran las distribuciones de las variables numéricas mediante histogramas, coloreados a partir de la cantidad de instancias con cada número de anillos. Se puede observar cómo algunas variables tienen distribuciones muy similares entre sí. Por un lado, \textit{Length} y \textit{Diameter} presentan histogramas muy similares aunque están valuadas en intervalos distintos. Por otro, las 3 últimas variables, correspondientes a distintos valores de peso del individuo, también generan histogramas muy parecidos donde los colores nos indican que aportan esencialmente la misma información sobre el número de anillos. Se puede intuir que estas variables con histogramas similares estarán altamente correladas entre sí.
+
+Otro dato que extraemos, y que parece razonable, es que en general la edad del individuo aumenta progresivamente con su tamaño (longitus, diámetro y altura) y su peso. Por esto se ven colores más anaranjados, correspondientes a individuos jóvenes, en las primeras barras de cada gráfico, y más verdosos y azulados conforme nos movemos a la derecha. Sin embargo, no es una relación tan directa puesto que en las barras superiores de cada gráfico hay individuos tanto en edad mediana (alrededor de 10) como longevos (de 18 en adelante). Esto nos lleva a pensar que el tamaño y peso de los individuos no viene únicamente dado por su edad sino que puede haber otros factores (el clima de la zona, la cantidad de nutrientes disponibles, etc.).
+
+\begin{figure}
+  \centering
+  \includegraphics[width=0.48\textwidth]{03.pdf}
+  \hfill
+  \includegraphics[width=0.48\textwidth]{04.pdf}
+  
+  \includegraphics[width=0.48\textwidth]{05.pdf}
+  \hfill
+  \includegraphics[width=0.48\textwidth]{06.pdf}
+
+  \includegraphics[width=0.48\textwidth]{07.pdf}
+  \hfill
+  \includegraphics[width=0.48\textwidth]{08.pdf}
+
+  \includegraphics[width=0.48\textwidth]{09.pdf}
+  \hfill
+  \includegraphics[width=0.2\textwidth,trim={0pt 0pt 380pt 240pt},clip]{10.pdf}
+
+  \caption{\label{fig:hist-num}Histogramas de variables numéricas}
+  
+\end{figure}
+
+Por último, comprobamos la correlación entre variables que se podía intuir de los gráficos anteriores. En la figura~\ref{fig:abacorr} se muestra la correlación lineal entre cada pareja de variables numéricas. Muchas parejas de variables tienen una correlación igual o superior a 0.9, lo que puede indicar que no aportarán mucha información adicional y bastaría con usar una o dos para extraer la mayor parte de la información proporcionada en el dataset.
+
+\begin{figure}
+  \includegraphics[width=0.6\textwidth]{12.pdf}
+  \caption{\label{fig:abacorr}Tabla de correlaciones entre variables.}
+  
+\end{figure}
+
+\subsection{Dataset de clasificación: monk-2}
+
+
+El dataset se proporciona en formato \texttt{.dat} de KEEL, por lo que para cargarlo en R previamente se ha convertido al formato ARFF de Weka mediante el código listado en el apéndice~\ref{sec:code:conv}.
+
+\section{Regresión}
+
+\subsection{Modelo lineal simple}
+
+Para construir modelos de regresión lineal simple, escojo las variables \textit{Sex}, \textit{Diameter}, \textit{Height}, \textit{Whole\_weight} y \textit{Shell\_weight} ya que son relativamente diferentes entre sí (miden distintos aspectos, aunque estén bastante correladas) y, de entre las similares a ellas, son de las más correladas con \textit{Rings}, por lo que el resultado podrá ser algo mejor que en el resto.
+
+Las medidas de rendimiento de los resultados se recogen en la tabla~\ref{tbl:lmerr}. En la figura~\ref{fig:lmfit} se muestra la línea de mejor ajuste para errores cuadráticos según la variable \textit{Shell\_weight}, que es la que mejores resultados obtiene en este caso.
+
+\begin{table}[ht]
+  \caption{\label{tbl:lmerr}Resultados de los modelos de regresión lineal simple.}
+  
+  \begin{tabular}[c]{l||r|r|r}
+    Regresor & MSE & $R^2$ ajustado & p-value \\
+    \hline
+    {\color{red}Sex NO ES SIMPLE?} & 2.897 & 0.1927 & $<$ 2e-16  \\
+    Diameter & 2.639 & 0.3301 & $<$ 2e-16 \\
+    Height & 2.677 & 0.3106 & $<$ 2e-16 \\
+    Whole\_weight & 2.713 & 0.2919 & $<$ 2e-16 \\
+    Shell\_weight & 2.510 & 0.3937 & $<$ 2e-16
+  \end{tabular}
+\end{table}
+
+
+\begin{figure}
+  \includegraphics[width=0.7\textwidth]{13.pdf}
+  \caption{\label{fig:lmfit}Modelo lineal simple (en rojo) con la variable \textit{Shell\_weight}.}
+  
+\end{figure}
+
+\subsection{Modelo lineal múltiple}
+
+Se construye el modelo de regresión lineal múltiple con todas las variables en principio. Este devuelve un error residual de 2.194, $R^2$ ajustado de 0.5369 y p-value inferior a 0.001 excepto en la variable dummy \textit{SexF} y en \textit{Length}, para las cuales el coeficiente estimado es cercano a 0 y el p-value es muy alto.
+
+Se observan además otros fenómenos, como que los coeficientes de algunas variables correspondientes a pesos son negativos pero de gran magnitud. Esto revela que las altas dependencias entre estas variables afectan al comportamiento del modelo, que intenta trabajar con la informacion redundante de esta forma. El informe completo aportado por la función \texttt{summary} se muestra en la figura~\ref{fig:multlm}.
+
+\begin{figure}[ht]
+  \begin{Verbatim}[fontsize=\scriptsize]
+Call:
+lm(formula = Rings ~ ., data = abalone)
+
+Residuals:
+     Min       1Q   Median       3Q      Max 
+-10.4800  -1.3053  -0.3428   0.8600  13.9426 
+
+Coefficients:
+                Estimate Std. Error t value Pr(>|t|)    
+(Intercept)      3.95236    0.28484  13.876  < 2e-16 ***
+SexF            -0.05772    0.08335  -0.692    0.489    
+SexI            -0.88259    0.09573  -9.219  < 2e-16 ***
+Length          -0.45834    1.80912  -0.253    0.800    
+Diameter        11.07510    2.22728   4.972 6.88e-07 ***
+Height          10.76154    1.53620   7.005 2.86e-12 ***
+Whole_weight     8.97544    0.72540  12.373  < 2e-16 ***
+Shucked_weight -19.78687    0.81735 -24.209  < 2e-16 ***
+Viscera_weight -10.58183    1.29375  -8.179 3.76e-16 ***
+Shell_weight     8.74181    1.12473   7.772 9.64e-15 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Residual standard error: 2.194 on 4167 degrees of freedom
+Multiple R-squared:  0.5379,	Adjusted R-squared:  0.5369 
+F-statistic: 538.9 on 9 and 4167 DF,  p-value: < 2.2e-16
+  \end{Verbatim}
+  \caption{\label{fig:multlm}Informe acerca del modelo lineal múltiple con todas las variables.}
+  
+\end{figure}
+
+Encontramos un punto intermedio entre el uso de una sola variable y el de demasiadas con el uso de 3 variables únicamente: \textit{Diameter}, \textit{Shucked\_weight} y \textit{Shell\_weight}. Las dos últimas componen la pareja de variables de peso con menor correlación, por lo que intuitivamente puede que aporten información más diferente al modelo. El modelo resultante presenta un error residual de 2.275, $R^2$ ajustado de 0.502 y p-value muy inferior a 0.001 para todas las variables. El coeficiente estimado para \textit{Shucked\_weight} sigue siendo negativo, pero aún así aporta información ya que el modelo pierde mucho rendimiento al retirar esta variable. En la figura~\ref{fig:3lm} se incluye el informe completo de este modelo.
+
+\begin{figure}[ht]
+  \begin{Verbatim}[fontsize=\scriptsize]
+Call:
+lm(formula = Rings ~ Diameter + Shucked_weight + Shell_weight, 
+    data = abalone)
+
+Residuals:
+    Min      1Q  Median      3Q     Max 
+-7.6282 -1.3957 -0.4315  0.9099 15.4310 
+
+Coefficients:
+               Estimate Std. Error t value Pr(>|t|)    
+(Intercept)      3.0202     0.2464   12.26   <2e-16 ***
+Diameter        14.6213     0.9472   15.44   <2e-16 ***
+Shucked_weight -11.5275     0.3826  -30.13   <2e-16 ***
+Shell_weight    21.3221     0.6460   33.01   <2e-16 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Residual standard error: 2.275 on 4173 degrees of freedom
+Multiple R-squared:  0.5023,	Adjusted R-squared:  0.502 
+F-statistic:  1404 on 3 and 4173 DF,  p-value: < 2.2e-16
+  \end{Verbatim}
+  \caption{\label{fig:3lm}Informe acerca del modelo lineal múltiple de 3 variables.}
+  
+\end{figure}
+
+
+\subsection{kNN}
+\subsection{Comparación}
+
+\section{Clasificación}
+
+\subsection{kNN}
+\subsection{Linear Discriminant Analysis}
+\subsection{Quadratic Discriminant Analysis}
+
+\clearpage
+
+\appendix
+
+\section{Código utilizado}
+
+\subsection{Preparación de ficheros: conversión a ARFF}
+\label{sec:code:conv}
+
+El siguiente listado de código permite convertir un archivo de datos de KEEL al formato ARFF\footnote{\url{https://www.cs.waikato.ac.nz/~ml/weka/arff.html}} de Weka. El archivo de salida no necesariamente cumple la especificación completa al no haberse verificado condiciones de formato en los tipos, pero es lo suficientemente cercano para poder leerse con la función \texttt{RWeka::read.arff}.
+
+\VerbatimInput[label=dat\_to\_arff.rb]{dat_to_arff.rb}
+
+\subsection{Regresión}
+\label{sec:code:regr}
+
+\VerbatimInput[label=regresion.r]{regresion.r}
+
+\subsection{Clasificación}
+\label{sec:code:clas}
+
+\VerbatimInput[label=clasificacion.r]{clasificacion.r}
+
+\end{document}
