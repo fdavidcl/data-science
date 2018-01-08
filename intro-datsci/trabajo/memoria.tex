@@ -127,6 +127,7 @@ Introducción a la Ciencia de Datos} % Subtitle
 
 
 %% Índice
+\setcounter{tocdepth}{2}
 {\parskip=2pt
   \tableofcontents
 }
@@ -222,7 +223,7 @@ Podemos deducir de lo anterior que el sexo en sí no será un factor determinant
 
 En la figura~\ref{fig:hist-num} se ilustran las distribuciones de las variables numéricas mediante histogramas, coloreados a partir de la cantidad de instancias con cada número de anillos. Se puede observar cómo algunas variables tienen distribuciones muy similares entre sí. Por un lado, \textit{Length} y \textit{Diameter} presentan histogramas muy similares aunque están valuadas en intervalos distintos. Por otro, las 3 últimas variables, correspondientes a distintos valores de peso del individuo, también generan histogramas muy parecidos donde los colores nos indican que aportan esencialmente la misma información sobre el número de anillos. Se puede intuir que estas variables con histogramas similares estarán altamente correladas entre sí.
 
-Otro dato que extraemos, y que parece razonable, es que en general la edad del individuo aumenta progresivamente con su tamaño (longitus, diámetro y altura) y su peso. Por esto se ven colores más anaranjados, correspondientes a individuos jóvenes, en las primeras barras de cada gráfico, y más verdosos y azulados conforme nos movemos a la derecha. Sin embargo, no es una relación tan directa puesto que en las barras superiores de cada gráfico hay individuos tanto en edad mediana (alrededor de 10) como longevos (de 18 en adelante). Esto nos lleva a pensar que el tamaño y peso de los individuos no viene únicamente dado por su edad sino que puede haber otros factores (el clima de la zona, la cantidad de nutrientes disponibles, etc.).
+Otro dato que extraemos, y que parece razonable, es que en general la edad del individuo aumenta progresivamente con su tamaño (longitud, diámetro y altura) y su peso. Por esto se ven colores más anaranjados, correspondientes a individuos jóvenes, en las primeras barras de cada gráfico, y más verdosos y azulados conforme nos movemos a la derecha. Sin embargo, no es una relación tan directa puesto que en las barras superiores de cada gráfico hay individuos tanto en edad mediana (alrededor de 10) como longevos (de 18 en adelante). Esto nos lleva a pensar que el tamaño y peso de los individuos no viene únicamente dado por su edad sino que puede haber otros factores (el clima de la zona, la cantidad de nutrientes disponibles, etc.).
 
 \begin{figure}
   \centering
@@ -256,16 +257,81 @@ Por último, comprobamos la correlación entre variables que se podía intuir de
 
 \subsection{Dataset de clasificación: monk-2}
 
+El dataset monk-2\footnote{\url{https://archive.ics.uci.edu/ml/datasets/MONK's+Problems}} es un conjunto de datos sintéticos construido con el objetivo de comparar múltiples distintos algoritmos de clasificación\footnote{Thrun, S. B., Bala, J. W., Bloedorn, E., Bratko, I., Cestnik, B., Cheng, J., \ldots \& Hamann, R. (1991). \textit{The monk's problems: A performance comparison of different learning algorithms.}}.
 
-El dataset se proporciona en formato \texttt{.dat} de KEEL, por lo que para cargarlo en R previamente se ha convertido al formato ARFF de Weka mediante el código listado en el apéndice~\ref{sec:code:conv}.
+
+\subsubsection{Estructura de los datos}
+
+El dominio del problema es un conjunto de hipotéticos robots que vienen descritos por 6 parámetros:
+\begin{enumerate}
+\item \textit{head\_shape} $\in$ \{round, square, octagon\}
+\item \textit{body\_shape} $\in$ \{round, square, octagon\}
+\item \textit{is\_smiling} $\in$ \{yes, no\}
+\item \textit{holding} $\in$ \{sword, balloon, flag\}
+\item \textit{jacket\_color} $\in$ \{red, yellow, green, blue\}
+\item \textit{has\_tie} $\in$ \{yes, no\}
+\end{enumerate}
+
+
+La tarea de clasificación es binaria y la clase corresponde al cumplimiento de una proposición lógica acerca de los 6 parámetros. En concreto, el problema 2 consiste en identificar aquellos robots para los cuales exactamente 2 de los 6 atributos presentan el primer valor posible (p.ej. round en \textit{body\_shape} y red en \textit{jacket\_color}). Sin embargo, como se verá más adelante, el dataset proporcionado \textbf{no se corresponde con el problema 2}, como estaba descrito, sino con el problema 3: robots cuya chaqueta es verde y tienen una espada o bien la chaqueta no es azul y su cuerpo no tiene forma de octógono.
+
+De nuevo, el dataset se proporciona en formato \texttt{.dat} de KEEL, por lo que para cargarlo en R previamente se ha convertido al formato ARFF de Weka mediante el código listado en el apéndice~\ref{sec:code:conv}. Al cargarlo en la sesión de R obtenemos un \texttt{data.frame} de 432 filas y 7 columnas. Enumerando todas las posibles combinaciones de valores de las variables, se llega al total de 432 instancias que vienen dadas en el dataset junto al valor de verdad de la proposición lógica mencionada como clase. Las variables en principio son nominales y sin orden, así que se podrían convertir a factores a la hora de procesarlas.
+
+\subsubsection{Deducción del problema}
+
+\begin{wrapfigure}{r}{0.4\textwidth}
+  \vspace{-2.5em}
+  \includegraphics[width=\textwidth]{22}
+  \caption{\label{fig:monkfail}Distribución de las instancias de cada clase con respecto a los valores de la quinta variable.}
+\end{wrapfigure}
+
+El dataset, tal y como está indicado en la página web de KEEL\footnote{\url{http://sci2s.ugr.es/keel/dataset.php?cod=65}}, debería corresponder al segundo de los problemas MONK. Sin embargo, vemos que esto no es cierto tras visualizar la relación entre la quinta variable (\textit{jacket\_color}) y la clase, en la figura~\ref{fig:monkfail}. Dado que el problema 2 corresponde a las instancias que tienen valor 1 en exactamente 2 de las variables, así como la ausencia de ruido y la presencia de todas las combinaciones de instancias posibles, es necesario que existan instancias positivas para cualquier valor de la quinta variable. Sin embargo, para el valor 4 no hay instancias positivas (cuando p.ej. $(1, 1, 2, 2, 4, 2)$ debería serlo).
+
+Analizamos los datos para comprobar cuál de los problemas se corresponde con el dataset presente. Para ello, simplemente calculamos los resultados de las proposiciones lógicas de los otros dos problemas para las instancias y comparamos con los valores de la clase. Para el problema 1 sólo hay una coincidencia del 54\%, pero para el problema 3 la coincidencia es del 100\%. Notamos que, en el caso del problema 3 los autores  introdujeron un 5\% de ruido, lo que no concuerda con el resultado obtenido, por lo que el ruido ha debido ser eliminado. Deducimos, por tanto, que el problema a tratar consiste en identificar las instancias que verifiquen:
+\begin{center} (\textit{jacket\_color} = green AND \textit{holding} = sword) OR \\
+  (\textit{jacket\_color} $\neq$ blue AND \textit{body\_shape} $\neq$ octagon).
+\end{center}
+
+\subsubsection{Exploración de los datos}
+
+Puesto que el dataset presenta todas las combinaciones posibles de los valores de las variables, se debe tener independencia entre las variables. Una consecuencia de ello es que la correlación lineal entre cada pareja de variables distintas será cero. Comprobamos este hecho mediante un \textit{corrplot} en la figura~\ref{fig:monkorr}.
+
+El dataset es binario puesto que la clase corresponde al cumplimiento de una condición lógica. Está bastante balanceado, hecho observable en el gráfico de la figura~\ref{fig:class}.
+
+\begin{figure}[ht]
+\centering
+\begin{subfigure}{.6\textwidth}
+  \centering
+  \includegraphics[width=\textwidth]{21}
+  \caption{\label{fig:monkorr}Gráfico de correlación entre variables. Los cuadrados en blanco indican correlación nula.}
+\end{subfigure}%
+\hfill
+\begin{subfigure}{.35\textwidth}
+  \centering
+  \includegraphics[width=\textwidth]{27}
+  \caption{\label{fig:class}Gráfico de barras para las clases del dataset.}
+\end{subfigure}
+\caption{}
+\end{figure}
+
+
+Además, podemos visualizar el dataset al completo en un gráfico como el de la figura~\ref{fig:heatmap}, donde cada columna corresponde a una variable y cada línea horizontal es una instancia, donde los colores corresponden a los valores que toma en cada variable. Intuitivamente se puede apreciar cómo el dataset contiene todas las combinaciones de valores de cada variable. La columna \textit{Class} da los valores de la clase para cada instancia (rojo indica negativo, dorado indica positivo).
+
+\begin{figure}[ht]
+  \includegraphics[width=.65\textwidth]{23}
+  \caption{\label{fig:heatmap}Gráfico de rectángulos plasmando el dataset \textit{monk-2}. El eje de abscisas corresponde a cada variable, y el de ordenadas al índice de la instancia.}
+\end{figure}
+
+
+No es necesaria una exploración más profunda de los datos en este caso, ya que tenemos el dataset totalmente descrito a partir de la descripción inicial y la definición de la clase. Los ejemplos incluidos en el dataset no presentan ninguna característica especial ya que son todos los posibles ejemplos, clasificados de acuerdo a una regla lógica y con ausencia absoluta de ruido.
 
 \section{Regresión}
 
 \subsection{Modelo lineal simple}
 
-Para construir modelos de regresión lineal simple, escojo las variables \textit{Sex}, \textit{Diameter}, \textit{Height}, \textit{Whole\_weight} y \textit{Shell\_weight} ya que son relativamente diferentes entre sí (miden distintos aspectos, aunque estén bastante correladas) y, de entre las similares a ellas, son de las más correladas con \textit{Rings}, por lo que el resultado podrá ser algo mejor que en el resto.
+Para construir modelos de regresión lineal simple, escojo las variables \textit{Sex}\footnote{En el caso de la variable \textit{Sex}, al realizar la regresión se crean variables dummy \textit{SexF} y \textit{SexI}, por lo que no se puede considerar estrictamente una regresión simple. La incluyo en esta sección ya que se está tomando una única variable del dataset original como regresor.}, \textit{Diameter}, \textit{Height}, \textit{Whole\_weight} y \textit{Shell\_weight} ya que son relativamente diferentes entre sí (miden distintos aspectos, aunque estén bastante correladas) y, de entre las similares a ellas, son de las más correladas con \textit{Rings}, por lo que el resultado podrá ser algo mejor que en el resto.
 
-Las medidas de rendimiento de los resultados se recogen en la tabla~\ref{tbl:lmerr}. En la figura~\ref{fig:lmfit} se muestra la línea de mejor ajuste para errores cuadráticos según la variable \textit{Shell\_weight}, que es la que mejores resultados obtiene en este caso.
+Las medidas de rendimiento de los resultados se recogen en la tabla~\ref{tbl:lmerr}. En la figura~\ref{fig:lmfit} se muestra la línea de mejor ajuste para errores cuadráticos según la variable \textit{Shell\_weight}, que es la que mejores resultados obtiene en este caso. Notamos además que la variable no verifica la homocedasticidad, hecho que ocurre con otras variables y puede estar perjudicando al rendimiento del modelo de regresión.
 
 \begin{table}[ht]
   \caption{\label{tbl:lmerr}Resultados de los modelos de regresión lineal simple.}
@@ -273,7 +339,7 @@ Las medidas de rendimiento de los resultados se recogen en la tabla~\ref{tbl:lme
   \begin{tabular}[c]{l||r|r|r}
     Regresor & MSE & $R^2$ ajustado & p-value \\
     \hline
-    {\color{red}Sex NO ES SIMPLE?} & 2.897 & 0.1927 & $<$ 2e-16  \\
+    Sex & 2.897 & 0.1927 & $<$ 2e-16  \\
     Diameter & 2.639 & 0.3301 & $<$ 2e-16 \\
     Height & 2.677 & 0.3106 & $<$ 2e-16 \\
     Whole\_weight & 2.713 & 0.2919 & $<$ 2e-16 \\
@@ -282,19 +348,18 @@ Las medidas de rendimiento de los resultados se recogen en la tabla~\ref{tbl:lme
 \end{table}
 
 
-\begin{figure}
+\begin{figure}[ht]
   \includegraphics[width=0.7\textwidth]{13.pdf}
   \caption{\label{fig:lmfit}Modelo lineal simple (en rojo) con la variable \textit{Shell\_weight}.}
-  
 \end{figure}
 
 \subsection{Modelo lineal múltiple}
 
 Se construye el modelo de regresión lineal múltiple con todas las variables en principio. Este devuelve un error residual de 2.194, $R^2$ ajustado de 0.5369 y p-value inferior a 0.001 excepto en la variable dummy \textit{SexF} y en \textit{Length}, para las cuales el coeficiente estimado es cercano a 0 y el p-value es muy alto.
 
-Se observan además otros fenómenos, como que los coeficientes de algunas variables correspondientes a pesos son negativos pero de gran magnitud. Esto revela que las altas dependencias entre estas variables afectan al comportamiento del modelo, que intenta trabajar con la informacion redundante de esta forma. El informe completo aportado por la función \texttt{summary} se muestra en la figura~\ref{fig:multlm}.
+Se observan además otros fenómenos, como que los coeficientes de algunas variables correspondientes a pesos son negativos pero de gran magnitud. Esto revela que las altas dependencias entre estas variables afectan al comportamiento del modelo, que intenta trabajar con la informacion redundante de esta forma. El informe completo aportado por la función \texttt{summary} se muestra en la figura~\ref{fig:multlm}. En particular, el F-estadístico es muy superior a 1 con un p-value muy bajo, lo cual nos confirma que alguno de los regresores está aportando información útil al modelo.
 
-\begin{figure}[ht]
+\begin{figure}[htbp]
   \begin{Verbatim}[fontsize=\scriptsize]
 Call:
 lm(formula = Rings ~ ., data = abalone)
@@ -326,9 +391,10 @@ F-statistic: 538.9 on 9 and 4167 DF,  p-value: < 2.2e-16
   
 \end{figure}
 
+
 Encontramos un punto intermedio entre el uso de una sola variable y el de demasiadas con el uso de 3 variables únicamente: \textit{Diameter}, \textit{Shucked\_weight} y \textit{Shell\_weight}. Las dos últimas componen la pareja de variables de peso con menor correlación, por lo que intuitivamente puede que aporten información más diferente al modelo. El modelo resultante presenta un error residual de 2.275, $R^2$ ajustado de 0.502 y p-value muy inferior a 0.001 para todas las variables. El coeficiente estimado para \textit{Shucked\_weight} sigue siendo negativo, pero aún así aporta información ya que el modelo pierde mucho rendimiento al retirar esta variable. En la figura~\ref{fig:3lm} se incluye el informe completo de este modelo.
 
-\begin{figure}[ht]
+\begin{figure}[htbp]
   \begin{Verbatim}[fontsize=\scriptsize]
 Call:
 lm(formula = Rings ~ Diameter + Shucked_weight + Shell_weight, 
@@ -355,18 +421,237 @@ F-statistic:  1404 on 3 and 4173 DF,  p-value: < 2.2e-16
   
 \end{figure}
 
+Por último, consideramos el uso de interacciones entre variables y no-linealidad. Una posibilidad sería tratar de modelar la edad a partir de más información acerca del tamaño de la concha, mediante interacciones de las variables \textit{Length}, \textit{Diameter} y \textit{Height}. Este modelo sólo alcanza un $R^2=0.3647$, por lo que no es adecuado.
+
+Tomando ahora el modelo lineal de la figura~\ref{fig:3lm} y añadiendo interacciones de \textit{Diameter} con \textit{Height} y \textit{Sex} con \textit{Shucked\_weight}, sin embargo, se llega a un modelo con error residual de 2.21 y $R^2=0.5304$, cercano al modelo que usa todas las variables. Por otro lado, al usar más variables estamos perdiendo interpretabilidad, además de que la interacción del sexo con una variable de peso es difícil de justificar. Se muestra el resultado de este modelo en la figura~\ref{fig:intlm}. 
+
+\begin{figure}[htbp]
+  \begin{Verbatim}[fontsize=\scriptsize]
+Call:
+lm(formula = Rings ~ Diameter * Height + Sex * Shucked_weight + 
+    Shell_weight, data = abalone)
+
+Residuals:
+     Min       1Q   Median       3Q      Max 
+-10.8028  -1.3106  -0.3345   0.8434  16.5562 
+
+Coefficients:
+                    Estimate Std. Error t value Pr(>|t|)    
+(Intercept)           3.5293     0.4777   7.388 1.79e-13 ***
+Diameter              9.6729     1.2863   7.520 6.67e-14 ***
+Height               26.8663     4.4123   6.089 1.24e-09 ***
+SexF                  0.6361     0.1961   3.244 0.001189 ** 
+SexI                 -1.5453     0.1906  -8.107 6.76e-16 ***
+Shucked_weight       -9.8686     0.4500 -21.931  < 2e-16 ***
+Shell_weight         22.3120     0.7573  29.463  < 2e-16 ***
+Diameter:Height     -45.8013    10.9363  -4.188 2.87e-05 ***
+SexF:Shucked_weight  -1.4594     0.4012  -3.637 0.000279 ***
+SexI:Shucked_weight   3.1661     0.6315   5.014 5.56e-07 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Residual standard error: 2.21 on 4167 degrees of freedom
+Multiple R-squared:  0.5314,	Adjusted R-squared:  0.5304 
+F-statistic:   525 on 9 and 4167 DF,  p-value: < 2.2e-16
+  \end{Verbatim}
+  \caption{\label{fig:intlm}Informe acerca del modelo lineal múltiple con interacciones entre variables.}  
+\end{figure}
 
 \subsection{kNN}
+
+Se ha aplicado el algoritmo kNN para regresión mediante la función \texttt{kknn} del paquete homónimo. Mediante funciones auxiliares (\texttt{crossval} y \texttt{run\_fold}) se ha ejecutado una validación cruzada para distintos valores de k. El error cuadrático medio se estanca ligeramente debajo de 5 a partir de k superiores a 15, como se puede observar en la figura \ref{fig:knnreg}, y alcanza el mínimo para $k=31$, tras el cual comienza a subir de nuevo. Para las comparaciones se ha usado el valor por defecto de $k=7$.
+
+\begin{figure}[ht]
+  \centering
+  \begin{subfigure}{.48\textwidth}
+  \includegraphics[width=\textwidth]{14}
+  \end{subfigure}
+  \hfill
+  \begin{subfigure}{.48\textwidth}
+    \centering
+    \resizebox{0.35\textwidth}{!}{%
+      \begin{tabular}{r|r}
+        k&      mse\\
+        \hline
+        1& 8.600862\\
+        3& 6.592650\\
+        5& 5.776288\\
+        7& 5.407728\\
+        9& 5.208182\\
+        11& 5.089659\\
+        13& 5.013014\\
+        15& 4.963846\\
+        17& 4.932705\\
+        19& 4.910475\\
+        21& 4.893378\\
+        23& 4.880124\\
+        25& 4.870832\\
+        27& 4.865636\\
+        29& 4.863457\\
+        31& 4.863456\\
+        33& 4.865528\\
+        35& 4.868820\\
+        37& 4.873087
+    \end{tabular}}
+  \end{subfigure}
+  
+  \caption{\label{fig:knnreg}Evolución del error medio cuadrático en test al aumentar el valor de k.}
+\end{figure}
+
 \subsection{Comparación}
+
+En esta sección se desarrollan los tests estadísticos necesarios para comparar los dos algoritmos utilizados, la regresión lineal y kNN, y además enfrentarlos junto a un tercero, M5'. En la tabla~\ref{tbl:regerr} se listan los valores utiilzados para realizar los tests.
+
+\begin{table}[ht]
+  \caption{\label{tbl:regerr}Error cuadrático medio en test: valores utilizados para realizar la comparativa general de algoritmos. Ünicamente los dos primeros valores de \textit{abalone} se han generado en este estudio.}
+\input{res_test.tex}  
+\end{table}
+
+\subsubsection{Comparativa por pares: modelo lineal y kNN}
+
+El modelo lineal y kNN se pueden comparar mediante un test de Wilcoxon. Para ello, previamente es necesario fijar un algoritmo \textit{de referencia}, en nuestro caso kNN, y normalizar las diferencias de errores. El test de Wilcoxon nos devuelve los siguientes resultados:
+\begin{itemize}
+\item $R^+=78$
+\item $R^-=93$
+\item $p=0$.7660294
+\end{itemize}
+Puesto que el p-valor es notablemente alto no podemos descartar la posibilidad de que no existan diferencias reales entre los algoritmos, es decir, que ambos estén otorgando el mismo rendimiento.
+
+\subsubsection{Comparativa múltiple}
+
+Ahora, comparamos 3 algoritmos entre sí mediante el test de Friedman: regresión lineal, kNN y M5'. El resultado obtenido es el siguiente:
+\begin{itemize}
+\item $\chi^2=8$.444
+\item grados de libertad = 2
+\item $p=0.$01467
+\end{itemize}
+
+Puesto que $p<0$.05,  podemos afirmar con más de un 95\% de confianza que existen diferencias significativas entre los algoritmos. Ejecutamos un test post-hoc de Holm para descubrir entre cuáles pueden existir estas diferencias. El resultado se puede observar en la tabla~\ref{tbl:holm}.
+
+\begin{table}[ht]
+  \caption{\label{tbl:holm}Matriz de p-valores resultantes en el test post-hoc de Holm.}
+  
+  \begin{tabular}{ r | r r }
+    & LM & kNN \\
+    \hline
+    kNN & 0.580 & - \\
+    M5' & 0.081 & 0.108 
+  \end{tabular}
+\end{table}
+
+Deducimos que, con más de un 90\% de confianza se puede afirmar que el modelo lineal y M5' presentan diferencias significativas, y con algo menos de confianza, que kNN y M5' también las presentan. En ambos casos, el algoritmo superior (por observación de los resultados) es M5'.
+
+\subsection{Conclusiones}
+
+El problema de regresión abordado presenta algunos obstáculos que dificultan su modelado: por un lado, el hecho de que las variables estén altamente correladas entre sí\; por otro, la existencia de factores externos a los datos recogidos que influencian al resultado. Se ha comprobado el rendimiento de tres métodos sobre el conjunto de datos: modelo lineal simple, modelo lineal múltiple y kNN, observando que en el caso actual el modelo lineal múltiple parece superior a kNN pero en general no hay evidencias suficientes para afirmar que uno sea mejor que el otro. Un último algoritmo, M5', sí que presenta una superioridad relativamente significativa sobre el resto.
 
 \section{Clasificación}
 
+En esta sección se detallan las ejecuciones de tres algoritmos de clasificación sobre el dataset \textit{monk-2}: kNN, LDA y QDA. Los tres algoritmos se han ejecutado en idénticas condiciones: se han proporcionado las mismas particiones para validación cruzada 10-fold, no se ha realizado preprocesamiento alguno sobre los datos ni se han normalizado los valores de las variables (ya que no tiene sentido que sean valores reales).
+
 \subsection{kNN}
+
+Se ha utilizado el algoritmo de los $k$ vecinos más cercanos para clasificar el dataset \textit{monk-2}, utilizando las particiones proporcionadas junto al enunciado para efectuar una validación cruzada 10-fold.
+
+Un fenómeno a destacar es que, de las implementaciones disponibles en R para el algoritmo kNN, la que mejores resultados obtiene es la correspondiente a la función \texttt{knn} del paquete \textit{class}. Se han probado también las implementaciones de \textit{kknn} y \textit{caret}.
+
+Para probar diferentes valores de $k$, por tanto, se ha utilizado la implementación de \textit{class}, y sus resultados se pueden observar en la figura~\ref{fig:classknn}. En este caso, el mayor rendimiento se ha obtenido para $k=5$, por lo que lo elegimos como mejor valor de $k$.
+
+\begin{figure}[ht]
+  \centering
+  \begin{subfigure}{0.75\textwidth}
+    \includegraphics[width=\textwidth]{24}
+  \end{subfigure}
+  \hfill
+  \begin{subfigure}{0.19\textwidth}
+    \resizebox{0.8\textwidth}{!}{%
+    \begin{tabular}{r|r}
+      k & acc\\
+      \hline
+      1 & 0.9954545\\
+      3 & 0.9931818\\
+      5 & 0.9977273\\
+      7 & 0.9885835\\
+      9 & 0.9749471\\
+      11 & 0.9726744\\
+      13 & 0.9749471\\
+      15 & 0.9749471\\
+      17 & 0.9726744\\
+      19 & 0.9726744\\
+      21 & 0.9726744\\
+      23 & 0.9726744\\
+      25 & 0.9657505\\
+      27 & 0.9656977\\
+      29 & 0.9656977\\
+      31 & 0.9542283\\
+      33 & 0.9542283\\
+      35 & 0.9542283\\
+      37 & 0.9469984
+    \end{tabular}}
+  \end{subfigure}
+  
+  \caption{\label{fig:classknn}Evolución del acierto medio en test conforme aumenta el valor de k, usando validación cruzada 1x10 con las particiones requeridas.}
+  
+\end{figure}
+
 \subsection{Linear Discriminant Analysis}
+
+LDA es un algoritmo que asume ciertas propiedades acerca de los datos. En concreto, asume normalidad de las variables y varianza común. Este requerimiento no se puede cumplir en el dataset que estamos utilizando, ya que la distribución de cada variable es uniforme puesto que están presentes todas las combinaciones posibles de valores de las mismas. Por otro lado, también es conveniente que las variables sean independientes, algo que sí se verifica en este caso.
+
+Para corroborar la falta de normalidad, aplicamos el test de normalidad de Shapiro-Wilk, cuya hipótesis nula es que los datos provengan de una distribución normal, a cada variable. Para todas las variables el test devuelve un p-value muy inferior a 0.01, por lo que descartamos casi con total confianza la posibilidad de que sean normales. Asimismo, para visualizar este hecho, mostramos alguna de las variables en un QQ-plot con la correspondiente línea de ajuste a la normal en la figura~\ref{fig:qqfail}: efectivamente, al tratarse de un dominio finito tan pequeño es imposible que se ajuste a una normal.
+
+\begin{figure}[ht]
+  \includegraphics[width=0.6\textwidth]{25}
+  \caption{\label{fig:qqfail}Comprobamos la falta de normalidad de la primera variable mediante un QQ-plot.}
+\end{figure}
+
+El rendimiento de LDA es, como cabía esperar, muy pobre. En validación cruzada otorga un acierto medio del 77.03\%, muy por detrás de kNN. Esto se debe a que los datos que usamos están muy lejos de ser adecuados para LDA: las variables no se ajustan a una normal y no comparten varianzas.
+
 \subsection{Quadratic Discriminant Analysis}
 
-\clearpage
+QDA, a diferencia de LDA, permite estimar una varianza distinta para cada variable. Esta ventaja parece que le beneficia a la hora de clasificar el dataset: en validación cruzada obtiene una exactitud media del 92.35\%.
 
+Para ganar algo de interpretabilidad sobre este modelo, podemos visualizar las fronteras de clasificación como se ve en la figura~\ref{fig:partimat}. Se han visualizado las variables segunda, cuarta y quinta puesto que corresponden a las que intervienen en la definición de la clase. Ya que las variables tienen dominios discretos finitos, las instancias se superponen en el gráfico. Aún así, podemos extraer alguna información: la zona de clasificación positiva abarca, entre otras, las condiciones lógicas por las que se construye la clase. Por ejemplo, la zona en que A5 tiene el valor 3 y A4 tiene el valor 1 (chaqueta verde y tiene espada) es positiva, mientras que la zona negativa abarca la región donde A5 vale 4 y A2 vale 3 (chaqueta azul y cuerpo octogonal). No son fronteras óptimas pero extraen en cierta manera la definición de la clase.
+
+\begin{figure}[ht]
+  \includegraphics[width=.75\textwidth]{26}
+  \caption{\label{fig:partimat}Ejemplo de frontera de clasificación generada por QDA para el dataset completo. Las zonas rosas denotan clasificación como positiva y las de color cian, clasificación negativa. Los números en negro son aciertos de clasificación, aquellos en rojo son errores.}
+  
+\end{figure}
+
+\subsection{Comparación}
+
+Los resultados finales obtenidos se recogen en la tabla~\ref{tbl:clasres}.
+
+\begin{table}[ht]
+  \caption{\label{tbl:clasres}Resultados de los 3 algoritmos sobre \textit{monk-2}, en validación cruzada 10-fold.}
+  
+  \input{clas_res.tex}
+\end{table}
+
+Considerando únicamente este dataset, observamos que en estas condiciones kNN tiene un rendimiento notablemente superior a QDA, mientras que LDA no consigue un buen resultado y queda muy lejos de estos dos. Esto se debe en gran parte a la naturaleza del problema, consistente en variables nominales tratadas como dominios enteros finitos. Los tres algoritmos trabajarían mejor con variables reales, sin embargo kNN es capaz de utilizar la distancia euclídea para caracterizar diferencias entre instancias, por lo que no es extraño que obtenga buenos resultados.
+
+Otro dato que extraemos es que ninguno de los 3 algoritmos parece estar sobreaprendiendo las particiones de entrenamiento, ya que el rendimiento en test se acerca al de entrenamiento.
+
+Pasando ahora a realizar una comparativa general sobre todos los datasets, el test de Friedman para la comparación múltiple nos devuelve los siguientes datos:
+\begin{itemize}
+\item $\chi^2=0$.7
+\item grados de libertad = 2
+\item $p=0$.7047
+\end{itemize}
+El p-value resulta muy alto, por lo que no podemos descartar que el rendimiento en general de los 3 algoritmos pueda ser idéntico. En la tabla~\ref{tbl:clasresall} se listan los datos usados para este test.
+
+\begin{table}[ht]
+  \caption{\label{tbl:clasresall}Resultados en test de los 3 algoritmos sobre todos los datasets. Únicamente la fila correspondiente a \textit{monk-2} ha sido completada en este estudio.}
+  
+  \input{clas_res_all.tex}
+\end{table}
+
+\subsection{Conclusiones}
+
+El dataset proporcionado, \textit{monk-2}, es un conjunto de datos artificiales sencillo cuyo objetivo es evaluar cómo se comportan distintos clasificadores a la hora de enfrentarse a datos con variables independientes y cuya clase responde al valor de verdad de una proposición lógica. Se podría haber trabajado convirtiendo los valores de las variables a variables dummy, pero eso eliminaría la independencia entre variables y perdería la intención original de los autores del dataset. En este estudio se ha comprobado que kNN obtiene mejores resultados para el dataset, ya que LDA y QDA son más aplicables a variables continuas y asumen algunas propiedades acerca de los datos. 
+
+\clearpage
 \appendix
 
 \section{Código utilizado}
@@ -381,10 +666,14 @@ El siguiente listado de código permite convertir un archivo de datos de KEEL al
 \subsection{Regresión}
 \label{sec:code:regr}
 
+El listado de código a continuación comprende todas las órdenes que se han utilizado para realizar el estudio del dataset \textit{abalone}. Los resultados deben ser reproducibles mediante la ejecución del script.\newline
+
 \VerbatimInput[label=regresion.r]{regresion.r}
 
 \subsection{Clasificación}
 \label{sec:code:clas}
+
+El siguiente listado de código contiene los comandos que se han utilizado para componer el estudio del dataset \textit{monk-2}. Los resultados deben ser reproducibles mediante la ejecución del script.
 
 \VerbatimInput[label=clasificacion.r]{clasificacion.r}
 
