@@ -1,0 +1,313 @@
+%!TEX program = xelatex
+% Importar configuración
+\input{_preamble.tex}
+
+\title{Introducción a la verificación formal}
+\date{\today}
+\author{David Charte}
+\institute{Servidores seguros --- Universidad de Granada}
+
+\begin{document}
+\maketitle
+
+\section{Introducción}
+\subsection{Motivación}
+
+\begin{frame}{Motivación}
+\begin{columns}
+\column{.5\textwidth}
+\begin{itemize}
+\item Requisitos de seguridad
+\item Requisitos de temporalidad
+\item Bugs!
+\end{itemize}
+\column{.5\textwidth}
+\includegraphics[width=\textwidth]{bugs.png}
+\end{columns}
+\end{frame}
+
+\begin{frame}{\contentsname}
+  \setbeamerfont{section in toc}{size=\small}
+  \setbeamerfont{subsection in toc}{size=\scriptsize}
+  \vspace{1em}
+  \tableofcontents
+\end{frame}
+
+\section{Proposiciones como tipos}
+\subsection{Lógicas}
+
+\begin{frame}{Lógica intuicionista}
+Cada afirmación se debe probar de forma \textbf{constructiva}.
+
+No asume \textbf{tercio excluso} ($p\vee \neg p$) ni eliminación de la doble negación $\Rightarrow$ No se puede demostrar por reducción al absurdo.
+
+Utilidad: las definiciones partiendo de proposiciones bajo esta lógica son \textbf{computables}. No se puede definir
+\begin{center}
+\texttt{int n = if conjetura 1 else 0}
+\end{center}
+si no podemos probar la conjetura o su negación.
+
+\end{frame}
+
+\begin{frame}{Lógica de orden superior}
+
+Lógica de \textbf{primer orden}: cuantificar elementos
+\begin{center}
+``existe $x$ tal que $x$ es mamífero y $x$ tiene pico''\\
+$\bm{\exists x}(x\in M \wedge x\in P)$
+\end{center}
+
+Lógica de \textbf{segundo orden}: cuantificar relaciones entre elementos
+\begin{center}
+``existe una clase $O$ de animales tal que para cada animal $x$, si $x$ es mamífero y tiene pico entonces es de clase $O$''\\
+$\bm{\exists O} \forall x (x\in M\wedge x\in P\rightarrow x\in O)$
+\end{center}
+
+Lógica de \textbf{orden superior} $=\bigcup\limits_n$ lógica de n orden.
+
+Utilidad: mayor expresividad.
+
+\end{frame}
+
+\subsection{Teoría de tipos}
+
+\begin{frame}{Teoría de tipos}
+Estudia los sistemas formales que utilizan tipos para restringir las operaciones que se pueden aplicar a cada término.
+
+Tipos de función: La función que lleva tipo \texttt{a} a tipo \texttt{b} es de tipo \texttt{(a -> b)}.
+
+Hay una teoría de tipos intuicionista (\textbf{Martin-Löf}).
+
+\end{frame}
+
+\begin{frame}{Tipos dependientes}
+
+Un tipo dependiente es un tipo cuya definición depende de un valor.
+
+Ejemplo: ``plantilla de tipos'' \texttt{Matrix(m,n)}. Podemos definir la multiplicación de matrices
+\begin{center}
+\texttt{mult :: (Matrix(k,m), Matrix(m,n)) -> Matrix(k,n)}
+\end{center}
+o la función que devuelve un vector de $n$ elementos:
+\begin{center}
+\texttt{repNull :: n -> Vector(n)}\\
+¡El tipo de retorno depende del valor del parámetro!
+\end{center}
+
+\end{frame}
+
+\subsection{Sistemas de cálculo}
+
+\begin{frame}{Sistemas de cálculo}
+
+Son equivalentes (resuelven todo problema \textbf{efectivamente calculable}):
+\begin{itemize}
+\item Funciones recursivas generales (Gödel)
+\item Cálculo lambda (Church)
+\item Máquinas universales (Turing)
+\end{itemize}
+
+Es más sencillo razonar sobre estos sistemas que sobre un lenguaje de programación.
+
+Cálculo lambda simplemente tipado: sólo incluye funciones y ``tipos básicos'', pero no es Turing-completo.
+\end{frame}
+
+%\begin{frame}{Turing-completitud}
+%\end{frame}
+
+\subsection{Correspondencia de Curry-Howard}
+
+\begin{frame}{Correspondencia de Curry-Howard}
+Cada tipo se relaciona con una proposición (Curry, 1934).
+
+\begin{exampleblock}{Isomorfismo de Curry-Howard}
+Una proposición verdadera se identifica con un tipo del cual existe al menos un objeto, y una proposición falsa corresponde a un tipo para el cual es imposible construir un objeto.
+\end{exampleblock}
+
+Si encontramos un objeto del tipo que buscamos, entonces tenemos una demostración para nuestra proposición!
+
+\end{frame}
+
+\begin{frame}{Correspondencia de Curry-Howard}
+
+\begin{exampleblock}{Pareja / conjunción}
+Sólo hay elementos de tipo \texttt{(a,b)} si los hay de \texttt a y de \texttt b. De igual forma, $a\wedge b$ sólo se demuestra con una demostración para $a$ y otra para $b$.
+\end{exampleblock}
+
+\pause
+
+\begin{exampleblock}{Alternativa / disyunción}
+Tipo \texttt{(a|b)} describe elementos que son de \texttt a o de \texttt b, se corresponde con $a\vee b$.
+\end{exampleblock}
+
+\pause
+
+\begin{exampleblock}{Función / implicación}
+\texttt{a -> b} indica entrada de un elemento de tipo \texttt a y salida de tipo \texttt b. Vistos $a$ y $b$ como proposiciones, existe tal función si y solo si se cumple $a\rightarrow b$.
+\end{exampleblock}
+
+\end{frame}
+
+\begin{frame}{Correspondencia de Curry-Howard}
+Ejemplos:
+\begin{itemize}
+\item Tautología: $a\rightarrow a$ es cierto así que siempre existe una función de tipo \texttt{a -> a} (la identidad).
+\item Proyección: de una pareja podemos sacar el primer elemento (función tipo \texttt{(a,b) -> a}). Entonces, $a\wedge b\rightarrow a$ es verdadera.
+\end{itemize}
+
+\end{frame}
+
+\section{Verificación formal}
+\subsection{Enfoques}
+
+\begin{frame}{Verificación de modelos}
+Exploración \textbf{exhaustiva} de todos los
+estados y transiciones del modelo matemático asociado al sistema.
+
+Aplicable principalmente a sistemas con un \textbf{número finito de estados}, (también a algunos infinitos que se puedan representar finitamente). No adaptable a grandes sistemas.
+
+Las propiedades verificadas mediante esta técnica suelen venir descritas en una \textbf{lógica temporal}:
+``cada vez que ocurre x el sistema responde y''.
+\end{frame}
+
+\begin{frame}{Verificación deductiva}
+Construir una \textbf{especificación formal} del
+comportamiento de un sistema. Realizar demostraciones para deducir que la implementación la cumple.
+
+Generalmente las demostraciones se resuelven
+con
+\begin{itemize}
+\item \textbf{asistentes de demostración},
+\item solucionadores de
+teorías de satisfacibilidad módulo,
+\item demostradores automáticos.
+\end{itemize}
+\end{frame}
+
+\subsection{Asistentes de demostración}
+
+\begin{frame}{Asistentes de demostración}
+Programa que
+ayuda al desarrollo de demostraciones formales mediante \textbf{colaboración entre el
+humano y la máquina}.
+
+Cada asistente incluye una teoría de tipos y generalmente utiliza \textbf{tácticas} para encontrar un elemento del tipo buscado (Curry-Howard: equivale a una demostración).
+
+El humano
+escribe una guía para la demostración, completada y verificada por la máquina.
+
+
+\end{frame}
+
+\begin{frame}{Asistentes de demostración}
+
+\begin{itemize}
+\item \textbf{Agda} (Haskell): lógica de orden superior, tipos dependientes
+\item \textbf{Coq} (OCaml): lógica de orden superior, tipos dependientes
+\item \textbf{Isabelle} (ML): lógica de orden superior, tipos simples
+\item F*, HOL, PVS...
+\end{itemize}
+
+
+\end{frame}
+
+\begin{frame}[fragile]{Ejemplo: Coq}
+\scriptsize
+\begin{verbatim}
+(** Recursive polymorphic definition of trees *)
+Inductive tree (X:Type) : Type :=
+  | nilt : tree X
+| node : X -> tree X -> tree X -> tree X.
+
+(** Auxiliary lemmas about refl *)
+Lemma refl_involutive : forall {X:Type} (t:tree X),
+  refl (refl t) = t.
+Proof.
+  intros X t.
+  induction t as [|a izq Hiz der Hdr].
+    reflexivity.
+    simpl. rewrite -> Hiz. rewrite -> Hdr. reflexivity.
+Qed.
+\end{verbatim}
+
+Fuente: \url{https://github.com/M42/recorridosArboles}
+\end{frame}
+
+\section{Aplicaciones}
+
+\subsection{Sistemas operativos}
+
+\begin{frame}{Aplicaciones en sistemas}
+
+Aplicable a kernels sencillos: derivados del \textbf{microkernel L4}.
+
+Primeros intentos (1979): UCLA Secure Unix, Provably Secure Operating System. La verificación hacía el sistema \textbf{un orden de magnitud} más lento.
+
+Actuales: PikeOS (real-time), VFiasco, seL4.
+
+\end{frame}
+
+\begin{frame}{Secure Embedded L4 (seL4)}
+
+Primera demostración de corrección (200000 líneas para 7500 de código C) en 2009, sobre \textbf{Isabelle/HOL}.
+
+Libre bajo GPLv2 en 2014.
+
+Capas:
+\begin{enumerate}
+\item especificación abstracta (Isabelle)
+\item especificación ejecutable (Haskell)
+\item implementación (C) con prueba
+\end{enumerate}
+
+La línea de código de seL4 es \textbf{25x más barata} que la del promedio de programas que verifican \textit{Common Criteria}.
+
+\end{frame}
+
+
+
+\subsection{Software}
+
+\begin{frame}{Aplicaciones en software}
+
+Compiladores certificados: CompCert C (Coq)
+{\scriptsize\url{https://github.com/coq/coq/wiki/List of Coq PL Projects}}
+
+Criptografía verificada: HACL* (F*, parte de Project Everest)
+{\scriptsize\url{https://blog.mozilla.org/security/2017/09/13/verified-cryptography-firefox-57/}}
+\end{frame}
+
+\subsection{Hardware}
+
+\begin{frame}{Aplicaciones en hardware}
+
+Síntesis de hardware: Fe-Si HDL (Coq)
+{\scriptsize\url{https://link.springer.com/chapter/10.1007/978-3-642-39799-8_14}}
+
+Propiedad de vivacidad en procesadores: Bus \textit{Runway} de HP (Isabelle)
+{\scriptsize\url{https://rd.springer.com/chapter/10.1007/BFb0028385}}
+
+Procesador DLX verificado: Verified Architecture Microprocessor (PVS)
+{\scriptsize\url{https://link.springer.com/article/10.1007/s10009-006-0204-6}}
+
+\end{frame}
+
+
+\section{Conclusiones}
+\subsection{Conclusiones}
+
+\begin{frame}{Conclusiones}
+
+La verificación formal presenta:
+\begin{itemize}
+\item Fuerte base teórica
+\item Coste computacional alto
+\item Mayor seguridad a menor coste económico
+\item Enfoque más frecuente: deductiva con asistentes de demostración
+\end{itemize}
+\end{frame}
+
+\begin{frame}[standout]
+  ¡Gracias! ¿Preguntas?
+\end{frame}
+\end{document}
