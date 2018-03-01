@@ -1,0 +1,48 @@
+---
+title: 'Reglas de asociación: Zoo'
+author: "David Charte"
+date: "21 de diciembre de 2017"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+library(arules)
+library(arulesViz)
+library(mlbench)
+```
+
+```{r}
+data(Zoo)
+
+str(Zoo)
+```
+
+**Paso a factores:**
+```{r}
+Zoo$legs <- ordered(cut(Zoo$legs, c(-1, 1, 2, 8)),
+                    labels = c("No legs", "2 legs", ">2 legs"))
+
+# Convierto los FALSE a NA para que solo me aparezcan las
+# transacciones con valor TRUE al convertir (me elimino por
+# ahora las reglas negativas)
+Zoo[, c(1:12, 14:16)] <-
+  lapply(Zoo[, c(1:12, 14:16)], function(x)
+    as.factor(ifelse(x, TRUE, NA)))
+```
+
+**Conversión a transacciones:**
+```{r}
+tzoo <- as(Zoo, "transactions")
+summary(tzoo)
+image(tzoo)
+```
+
+**Items frecuentes:**
+```{r}
+itemFrequencyPlot(tzoo, support = 0.1, cex.names=0.8)
+```
+
+Conclusiones de este gráfico: El recinto contiene animales variados, tanto mamíferos como pájaros y peces. No suman el 100%, así que podemos intuir que haya otros tipos de animales (reptiles, anfibios, etc.). Esta posibilidad coincide con el hecho de que haya mucha más frecuencia de acuáticos (~35%) que de peces (~15%): es probable que haya anfibios, reptiles acuáticos o mamíferos acuáticos.
+
