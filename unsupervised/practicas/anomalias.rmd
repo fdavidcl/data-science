@@ -1,0 +1,616 @@
+---
+title: "Anomalías"
+author: "Francisco David Charte Luque"
+date: "27 de febrero de 2018"
+output: 
+  pdf_document: 
+    latex_engine: xelatex
+toc: true
+numbersections: true
+monofont: "Fira Code"
+lang: es-ES
+header-includes:
+  - \usepackage{subcaption}
+  - \usepackage{wrapfig}
+  - \usepackage{hyperref}
+  - \def\figureautorefname{Figura }
+---
+    
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE,
+  cache = T,
+  fig.keep = "all",
+  out.width = "0.6\\textwidth",
+  fig.width = 6,
+  out.height = "0.4\\textwidth",
+  fig.height = 4
+)
+
+library(magrittr)
+source("!Outliers_A2_Librerias_a_cargar_en_cada_sesion.R")
+source("!Outliers_A3_Funciones_a_cargar_en_cada_sesion.R")
+X11 = function(){}
+```
+
+# Descripción del conjunto de datos
+
+El dataset \textit{abalone}\footnote{\url{https://archive.ics.uci.edu/ml/datasets/Abalone}} abarca diferentes medidas físicas de conchas de abulón (\autoref{fig:abalone}) provinientes de Tasmania, y su objetivo es predecir la edad de la concha. El método experto para determinar la edad consiste en cortar y tintar la concha, para después contar el número de anillos mediante un microscopio.
+
+\begin{wrapfigure}{r}{0.3\textwidth}
+  \centering
+  \includegraphics[width=0.3\textwidth]{haliotis.jpg}
+  \caption{\label{fig:abalone}Concha de abulón \textit{Haliotis rubra}. Imagen de Peter Southwood/Wikimedia Commons (CC BY-SA).}
+\end{wrapfigure}
+
+Se trata de un dataset de regresión cuya variable objetivo no es realmente la edad de cada individuo, sino el número de anillos, \textit{rings}. Sumando 1.5 a este número se puede obtener la edad en años. Esta variable oscila entre 1 y 29, con la mitad de las conchas presentando entre 8 y 11 anillos.
+
+\textit{abalone} comprende 4177 instancias y 9 variables, de las cuales una es nominal y el resto numéricas:
+\begin{enumerate}
+\item \textit{sex}: el sexo del abulón, con 3 posibles valores: \textit{male}, \textit{female} e \textit{infant}.
+\item \textit{length}: longitud máxima en milímetros.
+\item \textit{diameter}: longitud perpendicular a la máxima en milímetros.
+\item \textit{height}: altura de la concha en milímetros.
+\item \textit{whole}: peso completo del individuo en gramos.
+\item \textit{shucked}: peso de la carne en gramos.
+\item \textit{viscera}: peso de las vísceras en gramos.
+\item \textit{shell}: peso de la concha tras secar en gramos.
+\item \textit{rings}: número de anillos de la concha
+\end{enumerate}
+
+A continuación cargamos el dataset desde su URL original y ajustamos los nombres de las variables:
+
+```{r load}
+origin <- "https://archive.ics.uci.edu/ml/machine-learning-databases/abalone/abalone.data"
+abalone <- read.csv(origin, header = FALSE)
+names(abalone) <- c(
+  "sex", "length", "diameter", "height", 
+  "whole", "shucked", "viscera", "shell", "rings"
+)
+```
+
+# Anomalías univariantes
+
+Para el análisis de anomalías univariantes selecciono la columna novena (*rings*):
+
+```{r uni}
+mydata.numeric <- abalone[, 2:9]
+nombre.mydata  <- "abalone"
+indice.columna <- 8
+
+mydata.numeric.scaled <- as.data.frame(lapply(mydata.numeric, scale))
+rownames(mydata.numeric.scaled) <- rownames(mydata.numeric)
+columna <- mydata.numeric[, indice.columna]
+nombre.columna <- names(mydata.numeric)[indice.columna]
+columna.scaled <- mydata.numeric.scaled[, indice.columna]
+```
+
+## Rango intercuartílico
+
+### Cómputo de los outliers IQR
+
+Calculamos los cuartiles y la distancia intercuartílica. Además, establecemos los límites a partir de los cuales consideramos que un elemento es outlier normal y extremo:
+
+```{r iqr, echo = c(-4,-10)}
+cuartil.primero <- quantile(columna, 1/4)
+cuartil.tercero <- quantile(columna, 3/4)
+iqr <- IQR(columna)
+cat("Q1:", cuartil.primero, "| Q3:", cuartil.tercero, "| IQR:", iqr)
+
+extremo.superior.outlier.normal  <- cuartil.tercero + 1.5 * iqr
+extremo.inferior.outlier.normal  <- cuartil.primero - 1.5 * iqr
+extremo.superior.outlier.extremo <- cuartil.tercero + 3 * iqr
+extremo.inferior.outlier.extremo <- cuartil.primero - 3 * iqr
+cat(extremo.superior.outlier.normal, "|", extremo.inferior.outlier.normal, "|", extremo.superior.outlier.extremo, "|", extremo.inferior.outlier.extremo)
+
+vector.es.outlier.normal  <-
+  columna > extremo.superior.outlier.normal  |
+  columna < extremo.inferior.outlier.normal
+vector.es.outlier.extremo <-
+  columna > extremo.superior.outlier.extremo |
+  columna < extremo.inferior.outlier.extremo
+```
+
+Consideraremos que un ejemplo es outlier normal si supera los 15.5 anillos o es inferior a 3.5, y que es extremo si supera los 20. Es destacable que, al tratarse de una medida estrictamente positiva, no habrá ejemplos con menos de -1 anillos. Además, habrá ejemplares jóvenes de la población que tendrán menos de 3.5 anillos y posiblemente no deberíamos considerarlos anómalos, ya que su única diferencia con los demás sería la edad.
+
+Esta técnica encuentra `r sum(vector.es.outlier.normal)` outliers *normales* y `r sum(vector.es.outlier.extremo)` outliers *extremos*.
+
+### Índices y valores de los outliers
+
+```{r iqrout}
+claves.outliers.normales     <- which(vector.es.outlier.normal)
+data.frame.outliers.normales <- mydata.numeric[claves.outliers.normales, ]
+nombres.outliers.normales    <- rownames(data.frame.outliers.normales)
+valores.outliers.normales    <- data.frame.outliers.normales[, indice.columna]
+
+claves.outliers.extremos     <- which(vector.es.outlier.extremo)
+data.frame.outliers.extremos <- mydata.numeric[claves.outliers.extremos, ]
+nombres.outliers.extremos    <- rownames(data.frame.outliers.extremos)
+valores.outliers.extremos    <- data.frame.outliers.extremos[, indice.columna]
+print(data.frame.outliers.normales[1:10, ])
+print(data.frame.outliers.extremos[1:10, ])
+```
+
+No muestro los resultados completos por cuestiones de espacio. Observamos que los outliers son en su mayoría ejemplos que exceden el umbral superior de anillos, y sólo `r sum(valores.outliers.normales < extremo.inferior.outlier.normal)` del total de  `r sum(vector.es.outlier.normal)` outliers se quedan por debajo del umbral inferior.
+
+### Desviación de los outliers con respecto a la media de la columna
+
+Extraigo los valores normalizados:
+
+```{r iqrd}
+valores.normalizados.outliers.normales <- columna.scaled[claves.outliers.normales]
+```
+
+### Plot
+
+```{r iqrp}
+MiPlot_Univariate_Outliers(columna, claves.outliers.normales, nombre.columna)
+MiPlot_Univariate_Outliers(columna, claves.outliers.extremos, nombre.columna)
+```
+
+Estos plots nos muestran los ejemplos que quedan etiquetados como outliers al establecer umbrales inferior y superior. Observamos que una gran cantidad de ellos se han considerado outliers normales, cuando tal vez podríamos pensar que la *edad* de esta especie puede tener una cola larga a la derecha, habiendo pocos individuos longevos pero entrando dentro de lo habitual. Los outliers extremos sí muestran mayor separación del resto, habiendo muy pocos ejemplos que tengan tal número de anillos, denotando ejemplares especialmente longevos.
+
+### Boxplot
+
+```{r iqrb, out.width = "0.4\\textwidth", fig.width = 4, out.height = "0.8\\textwidth", fig.height = 8}
+MiBoxPlot_IQR_Univariate_Outliers(mydata.numeric, indice.columna, coef = 1.5)
+MiBoxPlot_IQR_Univariate_Outliers(mydata.numeric.scaled, indice.columna, coef = 1.5)
+```
+
+Comprobamos que los boxplots no varían al usar los datos normalizados. Se nos muestran los datos anómalos según el IQR etiquetados con su índice, al haber tantos se solapan y sólo se pueden apreciar algunos de los extremos. Notamos que la mayor parte de la población se condensa en una banda relativamente estrecha de número de anillos.
+
+### Cómputo con funciones propias
+
+```{r iqrprop}
+vector.es.outlier.normal  <- vector_es_outlier_IQR(mydata.numeric, indice.columna, coef = 1.5)
+vector.es.outlier.extremo <- vector_es_outlier_IQR(mydata.numeric, indice.columna, coef = 3)
+claves.outliers.normales <- vector_claves_outliers_IQR(mydata.numeric, indice.columna, coef = 1.5)
+claves.outliers.extremos <- vector_claves_outliers_IQR(mydata.numeric, indice.columna, coef = 3)
+```
+
+Comprobamos que, efectivamente, las funciones dan los mismos resultados:
+
+- número de outliers normales: `r sum(vector.es.outlier.normal)`
+- número de outliers extremos: `r sum(vector.es.outlier.extremo)`
+
+### Trabajamos con varias columnas
+
+Ahora buscamos outliers mediante el rango intercuartílico en cualquier columna:
+
+```{r iqrvarias}
+indices.de.outliers.en.alguna.columna <-
+  vector_claves_outliers_IQR_en_alguna_columna(mydata.numeric, coef = 1.5)
+```
+
+En este caso se encuentran `r length(indices.de.outliers.en.alguna.columna)` outliers en total, formando un `r 100 * length(indices.de.outliers.en.alguna.columna) / nrow(abalone)`% de los ejemplos, una proporción bastante notable.
+
+### Ampliación: Índices y valores de los outliers
+
+```{r iqrfr}
+frame.es.outlier <- sapply(1:ncol(mydata.numeric), function(col)
+  vector_es_outlier_IQR(mydata.numeric, col)
+)
+numero.total.outliers.por.columna <- colSums(frame.es.outlier)
+indices.de.outliers.en.alguna.columna <- unique(unlist(
+  lapply(1:ncol(mydata.numeric), function(col)
+    vector_claves_outliers_IQR(mydata.numeric, col)
+  )
+))
+```
+
+### Ampliación: Desviación de los outliers con respecto a la media de la columna
+
+```{r iqrany}
+mydata.numeric[indices.de.outliers.en.alguna.columna[1:15], ]
+```
+
+### Ampliación: Boxplot
+
+```{r iqrbox}
+boxplot(mydata.numeric.scaled)
+MiBoxPlot_juntos(mydata.numeric)
+```
+
+<!--
+## Tests estadísticos
+
+### Test de Grubbs
+
+```{r thist}
+hist(columna, xlab = nombre.columna)
+```
+```{r tgr}
+test.de.Grubbs <- grubbs.test(columna, two.sided = T)
+print(test.de.Grubbs)
+```
+```{r tout}
+indice.de.outlier.Grubbs <- which.max(abs(columna - mean(columna)))
+valor.de.outlier.Grubbs <- columna[indice.de.outlier.Grubbs]
+print(indice.de.outlier.Grubbs)
+```
+```{r tpl}
+MiPlot_Univariate_Outliers(columna, indice.de.outlier.Grubbs, nombre.columna)
+```
+```{r tgrf}
+MiPlot_resultados_TestGrubbs <- function(datos, alpha = 0.05) {
+  test = grubbs.test(datos, two.sided = TRUE)
+  
+  if (test$p.value < alpha) {
+    index = which.max(abs(datos - mean(datos)))
+    valor = datos[index]
+    
+    cat(
+      "Encontrado outlier con valor", valor, "en la posición", 
+      index, "(p =", test$p.value, ")\n"
+    )
+    MiPlot_Univariate_Outliers(datos, index, "Test de Grubbs")
+  } else {
+    cat("No se han encontrado outliers (p =", test$p.value, ")\n")
+  }
+}
+MiPlot_resultados_TestGrubbs(columna)
+```
+
+### Test de Rosner
+
+```{r tros}
+test.de.rosner <- rosnerTest(columna, k = 4)
+cat(
+  test.de.rosner$all.stats$Outlier, "\n",
+  test.de.rosner$all.stats$Obs.Num
+)
+```
+```{r trp}
+MiPlot_Univariate_Outliers(
+  columna,
+  test.de.rosner$all.stats$Obs.Num[test.de.rosner$all.stats$Outlier],
+  nombre.columna
+)
+```
+```{r trf}
+MiPlot_resultados_TestRosner <- function(datos, k) {
+  test.de.rosner <- rosnerTest(datos, k = k)
+  outliers.index <- test.de.rosner$all.stats$Obs.Num[test.de.rosner$all.stats$Outlier]
+  outliers.value <- datos[outliers.index]
+  cat(
+    k, " mayores desviaciones de la media: ", test.de.rosner$all.stats$Obs.Num, "\n",
+    "De estas, ¿quién es outlier? ", test.de.rosner$all.stats$Outlier, "\n",
+    "Índices de los outliers: ", outliers.index, "\n",
+    "Valores de los outliers: ", outliers.value, "\n",
+    "Número de datos: ", length(datos), "\n", sep = ""
+  )
+  MiPlot_Univariate_Outliers(
+    datos,
+    outliers.index,
+    "Test de Rosner"
+  )
+}
+
+MiPlot_resultados_TestRosner(columna, 10)
+```
+-->
+
+# Anomalías multivariantes
+
+## Paquete mvoutlier
+
+### Obtención de los outliers multivariantes
+```{r mvpre, echo=F, include=F}
+alpha.value <- 0.05
+alpha.value.penalizado <- 1 - ( 1 - alpha.value) ^ (1 / nrow(mydata.numeric))
+set.seed(12)
+```
+
+```{r mvmv}
+mvoutlier.plot <- mvoutlier::uni.plot(
+  mydata.numeric.scaled, symb = F, alpha = alpha.value.penalizado
+)
+```
+
+### Análisis de los outliers
+
+```{r mva1}
+is.MCD.outlier <- mvoutlier.plot$outliers
+numero.de.outliers.MCD <- sum(is.MCD.outlier)
+print(numero.de.outliers.MCD)
+```
+
+```{r mva2}
+indices.de.outliers.en.alguna.columna  <-
+  vector_claves_outliers_IQR_en_alguna_columna(mydata.numeric)
+indices.de.outliers.multivariantes.MCD <- which(is.MCD.outlier)
+indices.de.outliers.multivariantes.MCD.pero.no.1variantes <- setdiff(
+  indices.de.outliers.multivariantes.MCD,
+  indices.de.outliers.en.alguna.columna
+)
+nombres.de.outliers.multivariantes.MCD.pero.no.1variantes <-
+  rownames(mydata.numeric)[indices.de.outliers.multivariantes.MCD.pero.no.1variantes]
+```
+
+```{r mvdf}
+data.frame.solo.outliers <- mydata.numeric.scaled[is.MCD.outlier, ]
+```
+
+```{r mvpl}
+MiBoxPlot_juntos(mydata.numeric, is.MCD.outlier)
+MiBiPlot_Multivariate_Outliers(mydata.numeric, is.MCD.outlier, "Biplot")
+```
+
+
+# Otros métodos no supervisados
+
+```{r nspre}
+mis.datos.numericos <- mydata.numeric[, c("height", "whole", "shell", "rings")]
+mis.datos.numericos.normalizados <- as.data.frame(lapply(mis.datos.numericos, scale))
+rownames(mis.datos.numericos.normalizados) <- rownames(mis.datos.numericos)
+```
+
+## Local Outlier Factor
+
+```{r lof1, fig.width=8, out.width=".8\\textwidth"}
+numero.de.vecinos.lof <- 5
+lof.scores <- lofactor(mis.datos.numericos.normalizados, numero.de.vecinos.lof)
+plot(sort(lof.scores))
+```
+
+```{r lofs}
+numero.de.outliers <- 2
+indices.de.lof.outliers.ordenados <- order(lof.scores, decreasing = T)
+indices.de.lof.top.outliers <- indices.de.lof.outliers.ordenados[1:numero.de.outliers]
+is.lof.outlier <- 1:nrow(mis.datos.numericos) %in% indices.de.lof.top.outliers
+```
+
+```{r lofpl}
+MiBiPlot_Multivariate_Outliers(mis.datos.numericos, is.lof.outlier, "LOF outliers") 
+```
+
+### Comparación con una sola columna
+
+```{r lofcmp}
+vector.claves.outliers.IQR.en.alguna.columna <- 
+  vector_claves_outliers_IQR_en_alguna_columna(mis.datos.numericos)
+vector.es.outlier.IQR.en.alguna.columna <- 
+  vector_es_outlier_IQR_en_alguna_columna(mis.datos.numericos)
+
+MiBiPlot_Multivariate_Outliers(
+  mis.datos.numericos, 
+  vector.es.outlier.IQR.en.alguna.columna, 
+  "outliers iqr en alguna columna"
+)
+indices.de.outliers.multivariantes.LOF.pero.no.1variantes <- setdiff(
+  indices.de.lof.top.outliers, 
+  vector.claves.outliers.IQR.en.alguna.columna
+)
+cat(indices.de.outliers.multivariantes.LOF.pero.no.1variantes)
+```
+
+### Ampliación: Filtro automático de columnas numéricas
+
+```{r lofamp}
+select_numeric <- function(datos) {
+  datos[, sapply(datos, is.numeric)]
+}
+
+str(select_numeric(abalone))
+```
+
+## Basados en clustering
+
+```{r clpre}
+numero.de.outliers   = 2
+numero.de.clusters   = 3
+set.seed(2)
+```
+
+### K-means
+
+```{r kmmod}
+modelo.kmeans <- kmeans(mis.datos.numericos.normalizados, centers = numero.de.clusters)
+indices.clustering <- modelo.kmeans$cluster
+centroides.normalizados <- modelo.kmeans$centers
+
+plot(
+  rings ~ whole, 
+  data = mis.datos.numericos.normalizados, 
+  col = indices.clustering
+)
+```
+
+```{r, include=F}
+distancias_a_centroides <- function(
+  datos.normalizados,
+  indices.asignacion.clustering, 
+  datos.centroides.normalizados) {
+  sqrt(rowSums(
+    (datos.normalizados - datos.centroides.normalizados[indices.asignacion.clustering,])^2
+  ))
+}
+```
+
+```{r kmdis}
+dist.centroides <- distancias_a_centroides(
+  mis.datos.numericos.normalizados,
+  indices.clustering,
+  centroides.normalizados
+)
+
+top.outliers <- order(dist.centroides, decreasing = T)[1:numero.de.outliers]
+print(top.outliers)
+```
+
+```{r kmtop}
+top_clustering_outliers <- function(
+  datos.normalizados,
+  indices.asignacion.clustering,
+  datos.centroides.normalizados,
+  numero.de.outliers
+) {
+  dist.centroides <- distancias_a_centroides(
+    mis.datos.numericos.normalizados,
+    indices.clustering,
+    centroides.normalizados
+  )
+
+  top.outliers <- order(dist.centroides, decreasing = T)[1:numero.de.outliers]
+
+  list(
+    indices = top.outliers,
+    distancias = dist.centroides[top.outliers]
+  )
+}
+```
+
+```{r kmf}
+print(top_clustering_outliers(
+  mis.datos.numericos.normalizados,
+  indices.clustering,
+  centroides.normalizados, 
+  numero.de.outliers
+))
+```
+
+
+```{r kmdez}
+mis.datos.medias <- colMeans(mis.datos.numericos)
+mis.datos.desviaciones <- sapply(mis.datos.numericos, sd)
+centroides.valores <- 
+  centroides.normalizados %>%
+  sweep(2, mis.datos.desviaciones, "*") %>%
+  sweep(2, mis.datos.medias, "+")
+print(centroides.valores)
+```
+
+### Ampliación: Partition around medoids
+
+```{r pam1}
+modelo.pam <- 
+  mis.datos.numericos.normalizados %>%
+  dist %>%
+  cluster::pam(numero.de.clusters)
+
+indices.clustering.pam <- modelo.pam$clustering
+centroides.normalizados.pam <- mis.datos.numericos.normalizados[modelo.pam$medoids, ]
+print(centroides.normalizados.pam)
+print(mis.datos.numericos[modelo.pam$medoids, ])
+```
+
+```{r pam2}
+print(top_clustering_outliers(
+  mis.datos.numericos.normalizados,
+  indices.clustering.pam,
+  centroides.normalizados.pam, 
+  numero.de.outliers
+))
+```
+
+### Ampliación: Distancia de Mahalanobis al centroide
+
+```{r dmc, fig.width=10, out.width="\\textwidth", fig.height=7, out.height=".7\\textwidth"}
+top_clustering_outliers_distancia_mahalanobis <- function(
+  datos, 
+  indices.asignacion.clustering, 
+  numero.de.outliers
+) {
+  cluster.ids = unique(indices.asignacion.clustering)
+  k           = length(cluster.ids)
+  seleccion   = sapply(1:k, function(x) indices.asignacion.clustering == x)
+  
+  # Usando la estimación robusta de la media y covarianza: (cov.rob del paquete MASS)
+  lista.matriz.de.covarianzas = lapply(1:k, function(x)
+    cov.rob(mis.datos.numericos[seleccion[, x], ])$cov)
+  lista.vector.de.medias = lapply(1:k, function(x)
+    cov.rob(mis.datos.numericos[seleccion[, x], ])$center)
+    
+  mah.distances = lapply(1:k, function(x) mahalanobis(
+    mis.datos.numericos[seleccion[,x],], 
+    lista.vector.de.medias[[x]], 
+    lista.matriz.de.covarianzas[[x]]
+  ))  
+  
+  todos.juntos = unlist(mah.distances)
+  todos.juntos.ordenados = names(todos.juntos[order(todos.juntos, decreasing=TRUE)])
+  indices.top.mah.outliers = as.numeric(todos.juntos.ordenados[1:numero.de.outliers])
+  
+  list(
+    distancias = mah.distances[indices.top.mah.outliers], 
+    indices = indices.top.mah.outliers
+  )
+}
+
+top.clustering.outliers.mah = top_clustering_outliers_distancia_mahalanobis(
+  mis.datos.numericos, 
+  indices.clustering, 
+  numero.de.outliers
+)
+
+is.kmeans.outlier.mah <-
+  1:nrow(mis.datos.numericos) %in% top.clustering.outliers.mah$indices
+
+BIPLOT.isOutlier             = is.kmeans.outlier.mah
+BIPLOT.cluster.colors        = colorspace::rainbow_hcl(numero.de.clusters)
+BIPLOT.asignaciones.clusters = indices.clustering
+MiBiPlot_Clustering_Outliers(mis.datos.numericos, "K-Means Clustering Outliers")
+```
+
+
+### Ampliación: Distancia relativa
+
+```{r rel}
+top_clustering_outliers_distancia_relativa = function(
+  datos.normalizados, 
+  indices.asignacion.clustering, 
+  datos.centroides.normalizados, 
+  numero.de.outliers
+) {
+  dist_centroides = distancias_a_centroides(
+    datos.normalizados, 
+    indices.asignacion.clustering, 
+    datos.centroides.normalizados
+  )
+  
+  cluster.ids = unique(indices.asignacion.clustering)
+  k           = length(cluster.ids)
+  
+  distancias.a.centroides.por.cluster = sapply(1:k, function(x) 
+    dist_centroides[indices.asignacion.clustering  == cluster.ids[x]]
+  )
+  
+  distancias.medianas.de.cada.cluster = sapply(1:k, function(x) 
+    median(dist_centroides[[x]])
+  )
+  
+  todas.las.distancias.medianas.de.cada.cluster = 
+    distancias.medianas.de.cada.cluster[indices.asignacion.clustering]
+  ratios = dist_centroides / todas.las.distancias.medianas.de.cada.cluster
+  
+  indices.top.outliers = order(ratios, decreasing=T)[1:numero.de.outliers]
+  
+  list(
+    distancias = ratios[indices.top.outliers],
+    indices = indices.top.outliers
+  )
+}
+
+top.outliers.kmeans.distancia.relativa = top_clustering_outliers_distancia_relativa(
+  mis.datos.numericos.normalizados,
+  indices.clustering, 
+  centroides.normalizados, 
+  numero.de.outliers
+)
+```
+
+Índices de los top k clustering outliers (k-means, usando distancia relativa):
+```{r rel2}
+top.outliers.kmeans.distancia.relativa$indices 
+```
+
+Distancias a sus centroides de los top k clustering outliers (k-means, usando distancia relativa):
+```{r rel3}
+top.outliers.kmeans.distancia.relativa$distancias
+```
+
+# Resumen de resultados
+
+## Conclusiones
+
+## Nota sobre reproducibilidad
