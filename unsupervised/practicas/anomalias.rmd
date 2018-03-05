@@ -1,7 +1,8 @@
 ---
 title: "Anomalías"
+subtitle: "Aprendizaje no supervisado y detección de anomalías - Máster DATCOM"
 author: "Francisco David Charte Luque"
-date: "27 de febrero de 2018"
+date: "Universidad de Granada"
 output: 
   pdf_document: 
     latex_engine: xelatex
@@ -26,12 +27,15 @@ knitr::opts_chunk$set(
   out.height = "0.4\\textwidth",
   fig.height = 4
 )
+options(width = 100)
 
 library(magrittr)
 source("!Outliers_A2_Librerias_a_cargar_en_cada_sesion.R")
 source("!Outliers_A3_Funciones_a_cargar_en_cada_sesion.R")
 X11 = function(){}
 ```
+
+\clearpage
 
 # Descripción del conjunto de datos
 
@@ -69,7 +73,7 @@ names(abalone) <- c(
 )
 ```
 
-# Anomalías univariantes
+# Anomalías univariantes: rango intercuartílico
 
 Para el análisis de anomalías univariantes selecciono la columna novena (*rings*):
 
@@ -85,9 +89,7 @@ nombre.columna <- names(mydata.numeric)[indice.columna]
 columna.scaled <- mydata.numeric.scaled[, indice.columna]
 ```
 
-## Rango intercuartílico
-
-### Cómputo de los outliers IQR
+## Cómputo de los outliers IQR
 
 Calculamos los cuartiles y la distancia intercuartílica. Además, establecemos los límites a partir de los cuales consideramos que un elemento es outlier normal y extremo:
 
@@ -115,7 +117,7 @@ Consideraremos que un ejemplo es outlier normal si supera los 15.5 anillos o es 
 
 Esta técnica encuentra `r sum(vector.es.outlier.normal)` outliers *normales* y `r sum(vector.es.outlier.extremo)` outliers *extremos*.
 
-### Índices y valores de los outliers
+## Índices y valores de los outliers
 
 ```{r iqrout}
 claves.outliers.normales     <- which(vector.es.outlier.normal)
@@ -133,7 +135,7 @@ print(data.frame.outliers.extremos[1:10, ])
 
 No muestro los resultados completos por cuestiones de espacio. Observamos que los outliers son en su mayoría ejemplos que exceden el umbral superior de anillos, y sólo `r sum(valores.outliers.normales < extremo.inferior.outlier.normal)` del total de  `r sum(vector.es.outlier.normal)` outliers se quedan por debajo del umbral inferior.
 
-### Desviación de los outliers con respecto a la media de la columna
+## Desviación de los outliers con respecto a la media de la columna
 
 Extraigo los valores normalizados:
 
@@ -141,7 +143,7 @@ Extraigo los valores normalizados:
 valores.normalizados.outliers.normales <- columna.scaled[claves.outliers.normales]
 ```
 
-### Plot
+## Plot
 
 ```{r iqrp}
 MiPlot_Univariate_Outliers(columna, claves.outliers.normales, nombre.columna)
@@ -150,16 +152,16 @@ MiPlot_Univariate_Outliers(columna, claves.outliers.extremos, nombre.columna)
 
 Estos plots nos muestran los ejemplos que quedan etiquetados como outliers al establecer umbrales inferior y superior. Observamos que una gran cantidad de ellos se han considerado outliers normales, cuando tal vez podríamos pensar que la *edad* de esta especie puede tener una cola larga a la derecha, habiendo pocos individuos longevos pero entrando dentro de lo habitual. Los outliers extremos sí muestran mayor separación del resto, habiendo muy pocos ejemplos que tengan tal número de anillos, denotando ejemplares especialmente longevos.
 
-### Boxplot
+## Boxplot
 
-```{r iqrb, out.width = "0.4\\textwidth", fig.width = 4, out.height = "0.8\\textwidth", fig.height = 8}
+```{r iqrb, out.width = "0.3\\textwidth", fig.width = 3, out.height = "0.5\\textwidth", fig.height = 5}
 MiBoxPlot_IQR_Univariate_Outliers(mydata.numeric, indice.columna, coef = 1.5)
 MiBoxPlot_IQR_Univariate_Outliers(mydata.numeric.scaled, indice.columna, coef = 1.5)
 ```
 
 Comprobamos que los boxplots no varían al usar los datos normalizados. Se nos muestran los datos anómalos según el IQR etiquetados con su índice, al haber tantos se solapan y sólo se pueden apreciar algunos de los extremos. Notamos que la mayor parte de la población se condensa en una banda relativamente estrecha de número de anillos.
 
-### Cómputo con funciones propias
+## Cómputo con funciones propias
 
 ```{r iqrprop}
 vector.es.outlier.normal  <- vector_es_outlier_IQR(mydata.numeric, indice.columna, coef = 1.5)
@@ -173,7 +175,7 @@ Comprobamos que, efectivamente, las funciones dan los mismos resultados:
 - número de outliers normales: `r sum(vector.es.outlier.normal)`
 - número de outliers extremos: `r sum(vector.es.outlier.extremo)`
 
-### Trabajamos con varias columnas
+## Trabajamos con varias columnas
 
 Ahora buscamos outliers mediante el rango intercuartílico en cualquier columna:
 
@@ -182,39 +184,51 @@ indices.de.outliers.en.alguna.columna <-
   vector_claves_outliers_IQR_en_alguna_columna(mydata.numeric, coef = 1.5)
 ```
 
-En este caso se encuentran `r length(indices.de.outliers.en.alguna.columna)` outliers en total, formando un `r 100 * length(indices.de.outliers.en.alguna.columna) / nrow(abalone)`% de los ejemplos, una proporción bastante notable.
+En este caso se encuentran `r length(indices.de.outliers.en.alguna.columna)` outliers univariantes en total.
 
-### Ampliación: Índices y valores de los outliers
+## Ampliación: Índices y valores de los outliers
 
 ```{r iqrfr}
 frame.es.outlier <- sapply(1:ncol(mydata.numeric), function(col)
   vector_es_outlier_IQR(mydata.numeric, col)
 )
-numero.total.outliers.por.columna <- colSums(frame.es.outlier)
-indices.de.outliers.en.alguna.columna <- unique(unlist(
-  lapply(1:ncol(mydata.numeric), function(col)
-    vector_claves_outliers_IQR(mydata.numeric, col)
-  )
-))
+numero.total.outliers.por.columna <- structure(
+  colSums(frame.es.outlier),
+  names = colnames(mydata.numeric)
+)
+print(numero.total.outliers.por.columna)
+indices.de.outliers.en.alguna.columna <- 
+  1:ncol(mydata.numeric) %>% 
+  lapply(function(col) vector_claves_outliers_IQR(mydata.numeric, col, coef = 1.5)) %>%
+  unlist %>% unique
 ```
 
-### Ampliación: Desviación de los outliers con respecto a la media de la columna
+Lo que observamos en el resultado es que hay muchos más datos anómalos en cuanto a número de anillos (278) que en el resto de variables, que hay entre 26 y 59. Esto puede denotar que habrá ejemplos que, pese a que tengan tamaño y peso *normales*, tendrán un número de anillos muy superior a lo común.
+
+Esta versión de la búsqueda de outliers en alguna columna elimina repeticiones, así que encuentra `r length(indices.de.outliers.en.alguna.columna)` instancias que tienen al menos un outlier, formando un `r 100 * length(indices.de.outliers.en.alguna.columna) / nrow(abalone)`% de los ejemplos.
+
+
+## Ampliación: Desviación de los outliers con respecto a la media de la columna
 
 ```{r iqrany}
-mydata.numeric[indices.de.outliers.en.alguna.columna[1:15], ]
+mydata.numeric.scaled[indices.de.outliers.en.alguna.columna[1:15], ]
 ```
 
-### Ampliación: Boxplot
+No muestro los datos completos por cuestión de espacio. En estos ejemplos, observamos que muchos casos de anomalías en columnas distintas de *rings* resultan ser por debajo de la media. En particular, estos ejemplos son anómalos para el atributo *length*.
+
+## Ampliación: Boxplot
 
 ```{r iqrbox}
 boxplot(mydata.numeric.scaled)
 MiBoxPlot_juntos(mydata.numeric)
 ```
 
+En estos gráficos vemos que la columna *height* tiene dos anomalías muy definidas y separadas del resto. Las columnas relacionadas con el tamaño físico del espécimen tienen mayoría de outliers por debajo de la media, mientras que los anillos y las medidas de peso tienen los outliers por encima.
+
 <!--
 ## Tests estadísticos
 
-### Test de Grubbs
+## Test de Grubbs
 
 ```{r thist}
 hist(columna, xlab = nombre.columna)
@@ -251,7 +265,7 @@ MiPlot_resultados_TestGrubbs <- function(datos, alpha = 0.05) {
 MiPlot_resultados_TestGrubbs(columna)
 ```
 
-### Test de Rosner
+## Test de Rosner
 
 ```{r tros}
 test.de.rosner <- rosnerTest(columna, k = 4)
@@ -290,30 +304,34 @@ MiPlot_resultados_TestRosner(columna, 10)
 ```
 -->
 
-# Anomalías multivariantes
+# Anomalías multivariantes: paquete mvoutlier
 
-## Paquete mvoutlier
-
-### Obtención de los outliers multivariantes
+## Obtención de los outliers multivariantes
 ```{r mvpre, echo=F, include=F}
 alpha.value <- 0.05
 alpha.value.penalizado <- 1 - ( 1 - alpha.value) ^ (1 / nrow(mydata.numeric))
 set.seed(12)
 ```
 
-```{r mvmv}
+```{r mvmv, fig.width=10, out.width="\\textwidth"}
 mvoutlier.plot <- mvoutlier::uni.plot(
   mydata.numeric.scaled, symb = F, alpha = alpha.value.penalizado
 )
 ```
 
-### Análisis de los outliers
+En el gráfico se observa que la mayoría de outliers multivariantes se sitúan por encima de la media en todas las variables.
+
+## Análisis de los outliers
+
+Extraemos los outliers multivariantes:
 
 ```{r mva1}
 is.MCD.outlier <- mvoutlier.plot$outliers
 numero.de.outliers.MCD <- sum(is.MCD.outlier)
 print(numero.de.outliers.MCD)
 ```
+
+Los outliers multivariantes resultan ser una mayor proporción de las instancias, en concreto forman un `r numero.de.outliers.MCD/nrow(abalone)*100`% de las mismas.
 
 ```{r mva2}
 indices.de.outliers.en.alguna.columna  <-
@@ -327,17 +345,31 @@ nombres.de.outliers.multivariantes.MCD.pero.no.1variantes <-
   rownames(mydata.numeric)[indices.de.outliers.multivariantes.MCD.pero.no.1variantes]
 ```
 
-```{r mvdf}
+Efectivamente, hay `r length(nombres.de.outliers.multivariantes.MCD.pero.no.1variantes)` instancias que son outliers multivariantes según la distancia de Mahalanobis pero no univariantes. Creamos un data.frame restringido a los outliers MCD (muestro los 10 primeros):
+
+```{r mvdf, echo = 1}
 data.frame.solo.outliers <- mydata.numeric.scaled[is.MCD.outlier, ]
+print(data.frame.solo.outliers[1:10, ])
 ```
 
-```{r mvpl}
+## Boxplot y biplot
+
+```{r mvpl, out.width=".8\\textwidth", fig.width=8, fig.height=6, out.height=".6\\textwidth"}
 MiBoxPlot_juntos(mydata.numeric, is.MCD.outlier)
 MiBiPlot_Multivariate_Outliers(mydata.numeric, is.MCD.outlier, "Biplot")
 ```
 
+El boxplot es díficil de evaluar dado que las etiquetas de los datos se solapan demasiado.
 
-# Otros métodos no supervisados
+En el biplot se aprecia que los ejemplos que están fuera de la frontera exterior de la región determinada por las dos componentes principales se han considerado outliers multivariantes, pero también muchas instancias que están dentro de dicha frontera. Podríamos pensar que la distancia de Mahalanobis está marcando como outliers tanto una región que realmente son datos muy anómalos como otra región de datos que tal vez son escasos pero una parte más común de la población.
+
+Es difícil apreciar qué variables están contribuyendo en mayor medida a los outliers multivariantes.
+
+# Local Outlier Factor
+
+## Lectura y preprocesamiento
+
+Seleccionamos 4 de las 8 variables númericas que tengan menos relación entre sí (*height* es de tamaño, *whole* y *shell* de peso y *rings* el número de anillos).
 
 ```{r nspre}
 mis.datos.numericos <- mydata.numeric[, c("height", "whole", "shell", "rings")]
@@ -345,7 +377,9 @@ mis.datos.numericos.normalizados <- as.data.frame(lapply(mis.datos.numericos, sc
 rownames(mis.datos.numericos.normalizados) <- rownames(mis.datos.numericos)
 ```
 
-## Local Outlier Factor
+## Outliers basados en distancias
+
+Establecemos una comparación con 5 vecinos para LOF y obtenemos las scores:
 
 ```{r lof1, fig.width=8, out.width=".8\\textwidth"}
 numero.de.vecinos.lof <- 5
@@ -353,10 +387,13 @@ lof.scores <- lofactor(mis.datos.numericos.normalizados, numero.de.vecinos.lof)
 plot(sort(lof.scores))
 ```
 
+Observamos 2 valores más altos que el resto y trabajaremos con estos, los extraemos ordenando la score y extrayendo los dos índices superiores:
+
 ```{r lofs}
 numero.de.outliers <- 2
 indices.de.lof.outliers.ordenados <- order(lof.scores, decreasing = T)
 indices.de.lof.top.outliers <- indices.de.lof.outliers.ordenados[1:numero.de.outliers]
+print(indices.de.lof.top.outliers)
 is.lof.outlier <- 1:nrow(mis.datos.numericos) %in% indices.de.lof.top.outliers
 ```
 
@@ -364,7 +401,9 @@ is.lof.outlier <- 1:nrow(mis.datos.numericos) %in% indices.de.lof.top.outliers
 MiBiPlot_Multivariate_Outliers(mis.datos.numericos, is.lof.outlier, "LOF outliers") 
 ```
 
-### Comparación con una sola columna
+En el gráfico se observa que los dos datos que se han marcado como outliers están muy distanciados de la región condensada de datos. Las variables *height*, *whole* y *shell* están bastante correladas por lo que aparecen en direcciones similares en el biplot, y es la dirección en que se separan los outliers del cluster central. La variable *rings* no afecta notablemente a estos outliers.
+
+## Comparación con una sola variable
 
 ```{r lofcmp}
 vector.claves.outliers.IQR.en.alguna.columna <- 
@@ -377,6 +416,11 @@ MiBiPlot_Multivariate_Outliers(
   vector.es.outlier.IQR.en.alguna.columna, 
   "outliers iqr en alguna columna"
 )
+```
+
+Este biplot nos muestra que los outliers calculados con IQR en alguna columna se ubican tanto bordeando el clúster central de datos como ocupando cierta región poco densa del mismo. Además, los dos outliers detectados mediante LOF son también de tipo IQR en alguna columna (en vista de la evidencia anterior, lo serán probablemente en *height*):
+
+```{r lofc2}
 indices.de.outliers.multivariantes.LOF.pero.no.1variantes <- setdiff(
   indices.de.lof.top.outliers, 
   vector.claves.outliers.IQR.en.alguna.columna
@@ -384,7 +428,9 @@ indices.de.outliers.multivariantes.LOF.pero.no.1variantes <- setdiff(
 cat(indices.de.outliers.multivariantes.LOF.pero.no.1variantes)
 ```
 
-### Ampliación: Filtro automático de columnas numéricas
+## Ampliación: Filtro automático de columnas numéricas
+
+Construimos automáticamente un data.frame con las columnas numéricas de otro:
 
 ```{r lofamp}
 select_numeric <- function(datos) {
@@ -394,7 +440,9 @@ select_numeric <- function(datos) {
 str(select_numeric(abalone))
 ```
 
-## Basados en clustering
+# Métodos basados en clustering
+
+Puesto que aparentemente los datos forman una región densa con algunas zonas adyacentes más dispersas, los métodos basados en agrupamiento probablemente no sean los más adecuados para detectar outliers en este caso. Establezco el número de clusters a buscar a 3, de forma que posiblemente alguno de los clusters pueda salir de la región densa.
 
 ```{r clpre}
 numero.de.outliers   = 2
@@ -402,19 +450,24 @@ numero.de.clusters   = 3
 set.seed(2)
 ```
 
-### K-means
+## Distancia euclídea con k-means
+
+Extraigo el modelo de k-means y genero un biplot coloreando los clusters:
 
 ```{r kmmod}
 modelo.kmeans <- kmeans(mis.datos.numericos.normalizados, centers = numero.de.clusters)
 indices.clustering <- modelo.kmeans$cluster
 centroides.normalizados <- modelo.kmeans$centers
 
-plot(
-  rings ~ whole, 
-  data = mis.datos.numericos.normalizados, 
-  col = indices.clustering
-)
+BIPLOT.isOutlier             = FALSE
+BIPLOT.cluster.colors        = colorspace::rainbow_hcl(numero.de.clusters)
+BIPLOT.asignaciones.clusters = indices.clustering
+MiBiPlot_Clustering_Outliers(mis.datos.numericos, "K-Means Clustering Outliers")
 ```
+
+Observamos que los 3 clusters generados cubren buena parte de la región densa de datos. Puede ser una consecuencia de que k-means no es robusto ante diferencias de densidad en clusters, y por tanto tiende a centrar los grupos en los lugares donde hay más instancias.
+
+Calculamos las distancias a los centroides mediante la función `distancias_a_centroides` y seleccionamos los outliers más destacables:
 
 ```{r, include=F}
 distancias_a_centroides <- function(
@@ -438,6 +491,8 @@ top.outliers <- order(dist.centroides, decreasing = T)[1:numero.de.outliers]
 print(top.outliers)
 ```
 
+Vemos que según las distancias a los centroides, encontramos los mismos 2 outliers que con LOF. Recogemos este proceso en una función y obtenemos tanto estos outliers como las distancias a sus centroides:
+
 ```{r kmtop}
 top_clustering_outliers <- function(
   datos.normalizados,
@@ -446,9 +501,9 @@ top_clustering_outliers <- function(
   numero.de.outliers
 ) {
   dist.centroides <- distancias_a_centroides(
-    mis.datos.numericos.normalizados,
-    indices.clustering,
-    centroides.normalizados
+    datos.normalizados,
+    indices.asignacion.clustering,
+    datos.centroides.normalizados
   )
 
   top.outliers <- order(dist.centroides, decreasing = T)[1:numero.de.outliers]
@@ -469,6 +524,7 @@ print(top_clustering_outliers(
 ))
 ```
 
+Recuperamos los valores de los centroides en las escalas iniciales:
 
 ```{r kmdez}
 mis.datos.medias <- colMeans(mis.datos.numericos)
@@ -480,7 +536,11 @@ centroides.valores <-
 print(centroides.valores)
 ```
 
-### Ampliación: Partition around medoids
+Vemos que cada centroide se ha centrado en un "rango" de los datos, en cuanto a que el primero englobará individuos de altura, peso y edad medios; el segundo abarcará los individuos mayores en tamaño, peso y edad, y el tercero comprende a los pequeños y ligeros. Sin embargo, estos tres grupos no tienen una separación presente en los datos, sino artificial.
+
+## Ampliación: Distancia euclídea con *Partition around medoids*
+
+Construimos el modelo de *Partition around medoids* y obtenemos los centroides (que son datos de nuestro dataset) tanto en escala normalizada como sin normalizar:
 
 ```{r pam1}
 modelo.pam <- 
@@ -494,6 +554,8 @@ print(centroides.normalizados.pam)
 print(mis.datos.numericos[modelo.pam$medoids, ])
 ```
 
+Vemos que este método encuentra en este caso los mismos outliers que k-means y a distancias similares de los centroides:
+
 ```{r pam2}
 print(top_clustering_outliers(
   mis.datos.numericos.normalizados,
@@ -503,7 +565,11 @@ print(top_clustering_outliers(
 ))
 ```
 
-### Ampliación: Distancia de Mahalanobis al centroide
+En parte, esto es consecuencia de la abundancia de datos en la región densa del dataset. Los medoides encontrados son muy similares a los centroides de k-means, luego los resultados no pueden variar mucho.
+
+## Ampliación: Distancia de Mahalanobis
+
+Calculamos los outliers más destacables según la distancia de Mahalanobis al centroide. Para ello, definimos una función y la usamos:
 
 ```{r dmc, fig.width=10, out.width="\\textwidth", fig.height=7, out.height=".7\\textwidth"}
 top_clustering_outliers_distancia_mahalanobis <- function(
@@ -528,12 +594,12 @@ top_clustering_outliers_distancia_mahalanobis <- function(
   ))  
   
   todos.juntos = unlist(mah.distances)
-  todos.juntos.ordenados = names(todos.juntos[order(todos.juntos, decreasing=TRUE)])
-  indices.top.mah.outliers = as.numeric(todos.juntos.ordenados[1:numero.de.outliers])
+  seleccionados = order(todos.juntos, decreasing=TRUE)[1:numero.de.outliers]
+  indices.top.mah.outliers = as.numeric(names(todos.juntos[seleccionados]))
   
   list(
-    distancias = mah.distances[indices.top.mah.outliers], 
-    indices = indices.top.mah.outliers
+    indices = indices.top.mah.outliers,
+    distancias = todos.juntos[seleccionados]
   )
 }
 
@@ -542,6 +608,7 @@ top.clustering.outliers.mah = top_clustering_outliers_distancia_mahalanobis(
   indices.clustering, 
   numero.de.outliers
 )
+print(top.clustering.outliers.mah)
 
 is.kmeans.outlier.mah <-
   1:nrow(mis.datos.numericos) %in% top.clustering.outliers.mah$indices
@@ -552,8 +619,10 @@ BIPLOT.asignaciones.clusters = indices.clustering
 MiBiPlot_Clustering_Outliers(mis.datos.numericos, "K-Means Clustering Outliers")
 ```
 
+Es interesante notar que la distancia de Mahalanobis detecta uno de los outliers que se detectaban con la distancia euclídea (de índice 2052), pero el segundo (3997) no se había detectado antes. Además, el biplot no muestra claramente la razón de que este sea un outlier, es posible que las dos componentes principales no sean suficientes para mostrar que este ejemplo está lejos de su centroide según la distancia de Mahalanobis.
 
-### Ampliación: Distancia relativa
+
+## Ampliación: Distancia relativa
 
 ```{r rel}
 top_clustering_outliers_distancia_relativa = function(
@@ -597,20 +666,19 @@ top.outliers.kmeans.distancia.relativa = top_clustering_outliers_distancia_relat
   centroides.normalizados, 
   numero.de.outliers
 )
+print(top.outliers.kmeans.distancia.relativa)
 ```
 
-Índices de los top k clustering outliers (k-means, usando distancia relativa):
-```{r rel2}
-top.outliers.kmeans.distancia.relativa$indices 
-```
-
-Distancias a sus centroides de los top k clustering outliers (k-means, usando distancia relativa):
-```{r rel3}
-top.outliers.kmeans.distancia.relativa$distancias
-```
+En este caso, la distancia relativa sí encuentra los mismos outliers que detectábamos con la euclídea.
 
 # Resumen de resultados
 
-## Conclusiones
+El conjunto de datos *abalone* que se ha analizado presenta datos anómalos de dos tipos: hemos comprobado que hay dos ejemplos con una *height* muy superior a lo normal, que posiblemente se deban a errores de medición, y por otro lado hay una región de datos bastante poco densa que corresponde con ejemplares muy longevos. Los outliers del primer tipo los hemos encontrado con Local Outlier Factor y al hacer boxplots sobre el atributo *height*, así como con los métodos basados en clustering. Los outliers del segundo tipo los hemos estudiado buscando anomalías univariantes sobre la variable *rings*.
 
-## Nota sobre reproducibilidad
+Mediante el análisis de outliers multivariantes con la distancia de Mahalanobis, hemos encontrado bastantes ejemplos que no eran outliers univariantes pero sí eran multivariantes. Esto se puede deber a discordancias entre variables, por ejemplo, un espécimen muy grande y poco pesado o muy pequeño pero de mucha edad. Sin embargo, la enorme cantidad de outliers encontrados por este método ha impedido un análisis caso a caso.
+
+Por último, los métodos no supervisados basados en clustering podrían haber descartado outliers si hubiesen considerado la zona densa y la zona poco densa como clusters distintos, pero los métodos aplicados no han conseguido este objetivo. Un algoritmo basado en densidad como DBSCAN podría haber encontrado un solo cluster denso y haber considerado el resto de datos como ruidosos, un resultado que habría sido más razonable.
+
+\subsection*{Nota sobre reproducibilidad}
+
+Este trabajo se ha redactado en un formato enteramente reproducible, y se encuentra disponible en un repositorio de código abierto: <https://github.com/fdavidcl/data-science/blob/master/unsupervised/practicas/anomalias.rmd>. Para ejecutarlo, son necesarios los ficheros `!Outliers_A2_Librerias_a_cargar_en_cada_sesion.R` y `!Outliers_A3_Funciones_a_cargar_en_cada_sesion.R`, así como el paquete `magrittr`.

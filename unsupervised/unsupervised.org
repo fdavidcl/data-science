@@ -1,0 +1,881 @@
+#+title: Minería de datos: Aprendizaje no supervisado y detección de anomalías
+#+subtitle: Resumen de la asignatura
+#+author: Francisco David Charte Luque
+#+date: Universidad de Granada
+#+LATEX_CLASS: report
+#+latex_class_options: [a4paper,11pt,spanish]
+#+LANGUAGE: es-es
+#+OPTIONS: h:5 num:3
+#+latex_header: \let\stdchapter\chapter
+#+latex_header: \let\stdsection\section
+#+latex_header: \let\stdsub\subsection
+#+latex_header: \let\stdsubsub\subsubsection
+#+latex_header: \renewcommand{\part}{\stdchapter}
+#+latex_header: \renewcommand{\chapter}{\stdsection}
+#+latex_header: \renewcommand{\section}{\stdsub}
+#+latex_header: \renewcommand{\subsection}{\stdsubsub}
+#+latex_header: \usepackage[utf8]{inputenc}
+#+latex_header: \usepackage[spanish]{babel}
+#+latex_header: \usepackage{amsthm}
+#+latex_header: \newtheorem{thm}{Teorema}[chapter]
+* COMMENT Datos de la asignatura
+
+** Evaluación
+
+Versión 1:
+- 70% Examen escrito: fecha?
+- 30% Trabajo práctico a desarrollar de UNA de las 3 partes (reglas, anomalías, clustering) -> último día de febrero
+
+--->Versión 2:
+- Resumen de la materia del curso (trabajo teórico 70%)
+- Trabajo práctico de 1 parte (30%)
+- posibilidad de obtener 2 puntos adicionales por hacer trabajos prácticos de las 2 partes
+
+Versión 3:
+- Prácticas de ambas partes
+
+
+* Clustering
+
+** Introducción
+
+Se define /clustering/ o agrupamiento como una búsqueda de subconjuntos de los datos de forma que se maximice la similitud de datos pertenecientes al mismo subconjunto y se minimice aquella de datos pertenecientes a subconjuntos distintos. En términos de distancias, el objetivo es encontrar /clusters/ de los datos que minimicen distancia intra-cluster y maximicen distancia inter-cluster.
+
+El clustering es una de las diferentes tareas que se enmarcan dentro del aprendizaje no supervisado. Este tipo de aprendizaje consiste en extraer conocimiento a partir de datos que no han sido etiquetados ni segmentados de forma alguna.
+
+Las aplicaciones del clustering pueden ser organizadas en dos tipos, según sea esta tarea el objetivo final o bien el medio para conseguir otro objetivo.
+
+*** Clustering para interpretar datos
+
+En este caso, el objetivo último de realizar clustering es obtener conocimiento mediante los propios clusters hallados. Por ejemplo, en biología se aplica el clustering para asisitir a la elaboración de una taxonomía de todos los seres vivos, así como en la agrupación de genes que funcionan de forma similar. En recuperación de información, el clustering es una tarea fundamental para segmentar documentos o páginas web de distintos tipos en motores de búsqueda. En medicina, el agrupamiento puede permitir distinguir subclases de enfermedades a partir de clustering de sus síntomas. En el mundo empresarial y del marketing, la segmentación de clientes es una aplicación clásica del clustering.
+
+*** Clustering como herramienta
+
+El clustering puede ser una herramienta previa para completar otras tareas de tratamiento de datos. Por ejemplo, en análisis exploratorio de datos permite detectar outliers y realizar una segmentación preliminar de los datos. En preprocesamiento, se podría usar como técnica de reducción de instancias, sustituyendo agrupaciones por un representante. También se utiliza como base para la compresión de imágenes, sonido y vídeo.
+
+*** Clasificación de las técnicas de agrupamiento
+
+Las técnicas utilizadas para realizar clustering sobre un conjunto de datos se pueden organizar en tres categorías:
+
+- Métodos particionales: estos generan grupos que verifican exclusividad y exhaustividad, es decir, los grupos son disjuntos dos a dos y además cubren todo el conjunto de instancias.
+- Métodos jerárquicos: estas técnicas producen grupos anidados, formando una jerarquía que es muy útil a la hora de construir taxonomías.
+- Métodos basados en densidad: estos utilizan propiedades topológicas de los datos como la densidad de los puntos para diferenciar clusters.
+
+
+*** Aspectos a evaluar en algoritmos de clustering
+
+Idealmente, un algoritmo de clustering debería:
+- ser escalable a volúmenes grandes de datos sin perder rendimiento drásticamente
+- permitir gestionar datos de distinto tipo (numéricos y categóricos)
+- identificar clusters de formas arbitrarias
+- tener un número reducido de parámetros
+- tolerar razonablemente ruido en los datos y datos anómalos
+- otorgar el mismo resultado independientemente del orden de llegada de las instancias de entrenamiento
+- admitir datos de alta dimensionalidad
+- permitir incorporar restricciones de dominio aportadas por el usuario
+- ser fácilmente interpretable
+
+
+** Medidas de similitud y disimilitud
+
+Dependiendo del tipo de los datos, deberemos definir y utilizar alguna medida de similitud que nos permita discernir qué datos son más "cercanos" entre sí y cuáles son más lejanos. Para ello, se pueden considerar tanto /semejanzas/ como /distancias/. El significado numérico de estas es inverso: cuanto mayor la semejanza de dos elementos, menos debería ser su distancia.
+
+Un aspecto a tener en cuenta es que cada dato vendrá determinado por un vector en un espacio o dominio, donde cada atributo puede tener mayor o menor peso, y distinta magnitud. Será posible, a la hora de calcular la similitud, utilizar sólo parte de estos valores, dar más importancia a unos que a otros, o forzar a que ninguna se imponga sobre las demás mediante normalización.
+
+*** Normalización
+
+Para que ningún atributo pese más que los demás al calcular distancias o semejanzas numéricas, es conveniente que todos estén representaados en la misma escala. Consideramos los dos tipos más usuales de normalización: /min-max/ y /z-score/.
+
+**** min-max
+
+Consiste en llevar el rango del atributo al intervalo $[0,1]$. Si los valores del atributo están almacenados en el vector $X$ y se pretende escalar la instancia $i$-ésima, se utilizará la siguiente fórmula:
+
+$$\operatorname{minmax}(X, i) = \frac{X_i - \min X}{\max X - \min X}~.$$
+
+**** z-score
+
+Se trata de una normalización a una distribución gaussiana $\mathcal N(0,1)$. Para un atributo con media $\overline X$ y desviación típica $s_X$, la $i$-ésima instancia se normalizaría así:
+
+$$\operatorname{z-score}(X, i) = \frac{X_i - \overline X}{s_X}~.$$
+
+*** Semejanza
+
+Una medida de semejanza generalmente debe ser simétrica y dar el valor máximo (usualmente 1) a la semejanza de un dato consigo mismo. Normalmente son más utilizadas las distancias.
+
+Las siguientes son algunas medidas comunes de semejanza:
+
+**** Similaridad de Jaccard y variantes
+
+Se trata de un índice que mide cuánto tienen en común dos conjuntos:
+$$J(A,B) = \frac{\lvert A\cap B\rvert}{\lvert A\cup B\rvert}$$
+
+
+Algunas variantes del índice de Jaccard son:
+- índice de Tanimoto: para datos binarios, cuenta las coincidencias 1-1 y divide entre cualquier ocurrencia de 1 en uno de los dos datos (no se considera 0-0).
+- coeficiente de Sorensen-Dice: para vectores de conteos.
+
+**** Similaridad del coseno
+
+Mide la similitud entre dos documentos. Para ello, se parte de la representación de cada documento como un vector de frecuencias de aparición de términos. Teniendo este vector, la similaridad entre dos documentos se mide de la siguiente forma:
+$$\cos(x,y)=\frac{\left<x,y\right>}{\lvert x\rvert\lvert y\rvert}=\frac{\sum_i x_iy_i}{\sqrt{\sum_i x_i^2} \sqrt{\sum_i y_i^2}}$$
+
+**** Otros
+
+Otros índices de semejanza conocidos son el índice de acoplamiento simple y el índice de Russell.
+
+*** Distancia
+
+Una distancia $d$ debe verificar las siguientes tres propiedades:
+- simetría: $d(x,y)=d(y,x)$
+- reflexividad: $d(x,x) = 0$
+- desigualdad triangular: $d(x,y)\leq d(x,z)+d(z,y)$
+
+**** Minkowski
+
+La distancia inducida por la normal $L_r$ o distancia de Minkowski es una generalización de varias distancias muy conocidas y utilizadas. Se formula de la siguiente manera: 
+
+$$d_r(x,y) = \left(\sum_{j=1}^J |x_j-y_j|^r\right)^{\frac 1 r},~r\geq 1$$
+
+Casos particulares de esta distancia son:
+- para $r=1$, la distancia de Manhattan
+- para $r=2$, la distancia euclídea
+- el límite para $r\rightarrow \infty$, la distancia del máximo o de Chebyshev
+
+**** Mahalanobis
+
+La distancia de Mahalanobis trata de tener en cuenta las varianzas de cada variable para ponderar mejor cada dimensión que la distancia euclídea. La fórmula general en forma matricial es la siguiente:
+$$d_M(x,y)=\sqrt{(x-y)^TS^{-1}(x-y)}~,\quad\mbox{donde }S\mbox{ es la matriz de covarianza.}$$
+
+Un caso particular de esta distancia es aquel que presenta covarianza cero. En este caso la fórmula quedaría:
+$$d_M(x,y)=\sqrt{\sum_{i=1}^N\frac{(x_i-y_i)^2}{\sigma_i^2}}~,$$
+donde $\sigma_i$ es la desviación típica de la $i$-ésima variable.
+
+Si tomamos un punto como centro de un cluster de datos, entonces la distancia de Mahalanobis produce esferas (conjuntos de puntos a la misma distancia del centro) con forma elipsoidal, adaptándose mejor que la distancia euclídea a distintos clusters de datos donde las variables tienen diferentes varianzas y están correlacionadas entre sí.
+
+*** Atributos no continuos
+
+**** Levenshtein
+
+La distancia de Levenshtein indica el número de ediciones necesario para transformar una cadena de caracteres en otra. Es una generalización de la distancia de Hamming, que sólo permite tratar cadenas de la misma longitud. Por ejemplo:
+
+$$d_L("\text{palabra}", "\text{palabro}") = 1~,$$
+$$d_L("\text{rojo}", "\text{azul}") = 4~.$$
+
+**** Distancia de Gower
+
+Permite comparar datos que poseen atributos de distinto tipo (nominales y numéricos):
+$$d(x,y)^2=1-s(x,y)~,\text{ con}$$
+\[s(x,y)=\frac{\sum\limits_{i \in N} \left(1 - \frac{\lvert x_i - y_i\rvert}{G_i}\right)+\sum\limits_{i \in B}[x_i = y_i = 1]+\sum\limits_{i \in C}[x_i = y_i]}{\lvert N \rvert + \lvert B \rvert - \sum\limits_{i \in B}[x_i = y_i = 0] + \lvert C \rvert}~,\]
+donde $N$ es el conjunto de índices correspondientes a variables numéricas (continuas) y $G_i$ es el rango de la $i$-ésima variable, $B$ el conjunto de índices de variables binarias y $C$ el de variables categóricas (cualitativas). Los corchetes $[\dots]$ representan el operador de Iverson (evalúa a 1 cuando la condición es verdadera y a 0 cuando es falsa).
+
+
+** Métodos de agrupamiento
+
+Como se mencionó anteriormente, los métodos de agrupamiento más populares se distribuyen en tres categorías: basados en particiones, en jerarquías y en densidad. En los siguientes apartados se estudian los más relevantes dentro de cada clase.
+
+*** Clustering por particiones
+
+En los agrupamientos por particiones se generan grupos de los datos que son:
+- exhaustivos: cada dato está abarcado por al menos un grupo
+- exclusivos: cada dato está contenido en como mucho un grupo
+
+El número de grupos a encontrar se fija a priori, como un hiperparámetro del algoritmo, en la mayoría de los casos.
+
+A continuación se expone la técnica de k-medias o /k-means/, y algunas de sus variantes.
+
+**** k-means
+k-means es un método clásico en el ámbito del clustering. Dados un número $k$ y $k$ centroides iniciales (posiblemente obtenidos por algún procedimiento previo), para cada centroide se construye un cluster conteniendo aquellos puntos que lo tengan como centroide más cercano. Se calcula un nuevo centroide para cada cluster y se reitera el proceso.
+
+Nótese que este algoritmo utiliza distancias en dos etapas: la asignación de cluster para cada punto y el cálculo de nuevos centroides. En la primera se suele usar la disrancia euclídea, aunque es posible cambiarla por otras. En la segunda etapa, los centroides se pueden calcular como la media de los puntos si se está usando la distancia euclídea o la similaridad del coseno. Puesto que la media es muy sensible a puntos anómalos, en ocasiones se prefiere usar la mediana de los puntos, en cuyo caso se complementa con la distancia de Manhattan.
+
+El proceso iterativo de k-means se detiene cuando no se obtiene mejora en la función a minimizar. En ese caso, se habrá llegado a un mínimo local, pero no hay garantías de encontrar el mínimo global. El mínimo local encontrado dependerá del $k$ escogido y los centroides iniciales. Además, los clusters que es capaz de encontrar son convexos y homogéneos, en tanto que tiene peor comportamiento con grupos de distinto tamaño y densidad.
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.5\textwidth]{kmeans.png}
+\caption{\label{fig.km}Ejemplo del método k-means con $k=3$. Los puntos etiquetados con \textbf{C} son centroides}
+\end{figure}
+
+**** Estimando $k$
+
+Existen distintas estrategias para estimar el valor de $k$. Por un lado, se puede recurrir a alguno de los métodos de tipo jerárquico para tener posibles valores de $k$. Por otro, se puede repetir la ejecución de k-means con valores de $k$ en aumento y detenerse cuando la mejora en la función objetivo sea pequeña.
+
+**** Variantes de k-means
+
+A continuación se listan algunos métodos derivados de k-means:
+- k-medoids: se escogen como centroides puntos de la población
+- k-modes: para construir un centroide se toman las modas en cada atributo de los puntos del cluster
+
+
+*** Clustering jerárquico
+
+El objetivo del clustering jerárquico no es encontrar una particion exhaustiva y exclusiva de los datos, a diferencia del clustering por particiones. En lugar de esto, intenta construir una serie de agrupamientos que se ramifican de más generales a más concretos. Por tanto, en este tipo de clustering no se fija el número de grupos previamente.
+
+Estudiaremos dos estrategias de construcción de clusterings jerárquicos y la estructura que generan, el dendrograma.
+
+**** Aglomerativo
+
+Las estrategias de tipo aglomerativo consisten en tomar clusters /atómicos/ de un solo punto e ir uniéndolos progresivamente, construyendo el árbol jerárquico de abajo a arriba.
+
+Un enfoque dentro de esta técnica es considerar que cada item con el que se esté trabajando es un vértice de un grafo y se tratan de ir conectando los vértices a menor distancia. Esto produce dos formas de agrupar:
+- Agrupamiento de enlace simple (/single link/): cada grupo corresponde a una componente conexa del grafo. Una vez que sólo queda una componente conexa, el algoritmo termina. Una desventaja es que tienden a producirse dendrogramas /alargados/ y clusters donde a cada punto hay uno consecutivo muy cercano, pero los dos puntos más lejanos pueden guardar una enorme distancia.
+- Agrupamiento de enlace completo (/complete link/): cada cluster corresponde a un clique (subgrafo totalmente conectado) del grafo. El algoritmo termina cuando hay aristas entre cada par de vértices, y por tanto el grafo está totalmente conectado. A diferencia del enlace simple, esta técnica consigue dendrogramas más homogéneos. El de la figura \ref{fig.dendr} está generado mediante enlace completo.
+
+**** Divisivo
+
+Este tipo de métodos trabajan tomando inicialmente un cluster con todos los puntos y separando en distintos clusters progresivamente, siguiendo algún criterio, construyendo la jerarquía de arriba a abajo.
+
+**** Dendrograma
+
+Un dendrograma muestra las ramificaciones que se producen al dividir o juntar unos clusters en otros. En esta estructura, la distancia entre dos objetos viene representada por la altura de su enlace más próximo (o su cluster común más cercano). Su estudio puede ayudar a escoger el número ideal de clusters.
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.5\textwidth]{dendr.png}
+\caption{\label{fig.dendr}Ejemplo de un dendrograma}
+\end{figure}
+
+Generar el dendrograma completo del conjunto es un proceso laborioso y muy ineficiente. Por esto, se suele aplicar a una muestra pequeña de los datos.
+
+
+**** Distancias entre clusters
+
+Para dividir o agrupar clusters será necesario medir las distancias entre ellos. Dados dos clusters, hay distintas formas de calcular una distancia:
+- Distancia mínima de  cualquier pareja de puntos
+- Distancia máxima de cualquier pareja de puntos
+- Promedio de distancias de las parejas de puntos
+- Distancia de los dos centroides
+
+**** Algoritmos relevantes
+
+Algunos algoritmos conocidos en el ámbito del clustering jerárquico son:
+- BIRCH
+- ROCK
+- CURE
+- CHAMELEON
+
+*** Clustering basado en densidad
+
+Estos métodos exploran regiones de puntos de una densidad concreta separadas del resto por zonas menos densamente pobladas. Así, son capaces de construir clusters de distintas densidades, formas irregulares y solapados en algunas dimensiones. Se caracterizan además por ser robustos ante el ruido y escalables, ya que no realizan recorridos anidados del conjunto de datos.
+
+**** DBSCAN
+
+El algoritmo DBSCAN (/Density-based spatial clustering of applications with noise/) detecta las regiones densas de puntos de un conjunto que se ven separadas de otras regiones densas por áreas poco pobladas. Para ello, define densidad como la cantidad de puntos en un radio dado.
+
+A priori establece una distancia ``de cercanía'' y el número de puntos que debería haber en la región de cercanía de un punto para considerarlo parte de una región densa (punto /core/). Los puntos que no formen parte de una región densa pueden ser de frontera (/border/), si están en el radio de un punto /core/ pero no tienen suficientes puntos en su radio; o bien, ruido (/noise/), en caso contrario.
+
+DBSCAN es capaz de detectar clusters de formas arbitrarias, asignando al mismo cluster los que comparten regiones de cercanía. En la figura \ref{fig.dbscan} se muestra un resultado de ejecutar DBSCAN en un conjunto de puntos bidimensional con un cierto nivel de ruido.
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.5\textwidth]{dbscan.png}
+\caption{\label{fig.dbscan}Ejemplo de un caso donde DBSCAN encuentra los distintos clusters y descarta los puntos ruidosos}
+\end{figure}
+
+**** Otros algoritmos
+
+Algunos algoritmos relevantes aparte de DBSCAN son los siguientes:
+- OPTICS
+- DENCLUE
+- CLIQUE
+- SNN
+
+** Evaluación de resultados
+
+Puesto que en aprendizaje no supervisado generalmente no contamos con un etiquetado correcto de los datos contra el que comparar, no existe un único criterio por el que evaluar los algoritmos. En el ámbito del clustering podemos observar varios aspectos acerca de los resultados, como la ausencia de ruido en los clusters encontrados, la consistencia de los resultados con otras técnicas de agrupamiento, la conveniencia del valor de $k$, etc.
+
+Podemos dividir los criterios por los que evaluar algoritmos en externos, cuando es necesario aportar alguna información adicional, e internos, aquellos que se extraen directamente de los datos.
+
+*** Criterios externos
+
+Como criterio externo podemos utilizar un atributo de clase no para entrenar el algoritmo, pero sí para medir su rendimiento. Mediante precisión, entropía y otras medidas se puede comprobar si en los clusteres hay representación predominante de alguna de las clases.
+
+*** Criterios internos
+
+Podemos utilizar información de los propios datos y resultados de los algoritmos, tanto para evaluar el valor de $k$ como la bondad de los clusters construídos. 
+
+Por un lado, la medida de la suma de errores cuadráticos se puede utilizar para medir la variabilidad dentro de un cluster. Si se ejecuta un mismo algoritmo para distintos valores de $k$ en aumento, se puede tomar como $k$ final aquel para el cual los incrementos no producen mejoras notables del error, pero un decremento sí lo empeora. Otra forma de elegir $k$ sería tomar una muestra representativa de los datos y realizar un clustering jerárquico, obteniendo un dendrograma que permite observar cuántas ramas caen en cada nivel. ``Cortando'' el dendrograma a un nivel concreto podemos computar un valor de $k$ que divida el conjunto en clusters razonablemente separados.
+
+Por otro, la medida de bondad de los clusters una vez calculados se puede estimar mediante distintas medias de distancias. En general, el objetivo debe ser minimizar la distancia intra-cluster y maximizar la inter-cluster, produciendo así clusters cohesionados y separados entre sí. Un resultado teórico interesante es que, si se considera la distancia euclídea, los problemas de maximización de cohesión y separación son equivalentes. Así, se puede utilizar la suma de errores cuadráticos como medida objetivo general.
+
+Otros criterios adicionales que se pueden utilizar son la matriz de similitud y el coeficiente de silueta.
+
+** Dimensionalidad y distancias
+
+El siguiente resultado teórico sobre probabilidades[fn:1] nos indica cómo al aumentar el número de dimensiones ($m$) de los datos, dado un punto su vecino más cercano y el más lejano llegan a estar a una distancia ($d_m$) muy similar:
+
+\begin{thm}
+\label{th:dim-curse}
+Sea \(\{F_{m}\}_{m\in\mathbb N}\) una sucesión de distribuciones de
+probabilidad, \(n\in \mathbb N\) y \(p\in\mathbb R^+\) fijos. Para cada
+\(m\in\mathbb{N}\) sean \(X_{m1},\dots,X_{mn}\sim F_m\) muestras independientes
+e idénticamente distribuidas. Supongamos que tenemos una función
+\(d_m:\mathrm{Dom}(F_m)\rightarrow \mathbb R^+_0\) y llamamos
+\begin{align*}
+  \mathrm{DMIN}_{m}&=\min\{d_m(X_{mi}):i=1,\dots,n\},\\
+  \mathrm{DMAX}_{m}&=\max\{d_m(X_{mi}):i=1,\dots,n\}.
+\end{align*}
+
+Entonces, si
+\(\lim_{m\rightarrow +\infty}
+\operatorname{Var}\left[\frac{d_m(X_{m1})^p}{E[d_m(X_{m1})^p]}\right]=0\)
+se tiene que, para cada \(\varepsilon > 0\),
+\[\lim_{m\rightarrow +\infty}\operatorname{P}[\mathrm{DMAX}_m\leq (1+\varepsilon) \mathrm{DMIN}_m]=1.\]
+\end{thm}
+
+Deducimos de aquí que las distancias pierden significado al aumentar la dimensionalidad de los datos, y por esto los métodos de clustering pueden sufrir fuertes pérdidas de rendimiento. Distintas formas de paliar este problema involucran reducir de alguna manera el número de atributos involucrados en los cálculos:
+- transformación de características con métodos de reducción de dimensionalidad como PCA o autoencoders.
+- selección de características.
+- clustering en subespacios (usando distintas combinaciones de atributos).
+
+* Detección de anomalías
+
+** Introducción
+
+Se denominan anomalías a los datos considerablemente diferentes del resto. En un problema dado, se considera que habrá muchos más datos ``normales'' que anómalos. Las anomalías serán, en ocasiones, datos incorrectos debido a errores de medida y recogida. Sin embargo, en otros muchos casos representarán datos válidos pero poco comunes que conviene estudiar meticulosamente.
+
+Los métodos de clasificación que se basan en medidas de confianza no suelen funcionar bien para detectar anomalías. Las técnicas de regresión también se ven mu afectadas por los datos anómalos. Si nos interesa no tener datos anómalos, es importante analizar con detalle si nos dan información.
+
+**** Ejemplos
+
+- Detección de intrusiones/ataques en servidores: los ataques nuevos no tienen una firma reconocible, ni tienen por qué cumplir un patrón conocido.
+- Fraude en tarjetas de crédito
+- Epidemias
+- Análisis de mamografías
+- Análisis de imágenes por satélite
+- Eventos sospechosos en videovigilancia
+
+*** Aspectos de un problema de detección de anomalías
+
+**** Naturaleza de los datos de entrada
+
+Los datos pueden ser tabulados o pueden poseer otra estructura (gráfica, secuencial, etc.)
+
+**** Supervisión
+
+Dado un problema, se dice que es de detección de anomalías si al evaluar el detector (mediante tests o en el mundo real) existirán datos fuera de lo normal, pero no contamos con un patrón general que los describa. Según las respuestas a si existen anomalías en el conjunto de entrenamiento y a si conocemos cuáles de ellas son, podemos clasificar los métodos en 3 grupos:
+- Métodos supervisados: existen anomalías y están etiquetadas como tales
+- Métodos semisupervisados: no existen anomalías en los datos
+- Métodos no supervisados: hay anomalías y no están etiquetadas
+
+**** Tipo de anomalías
+
+- puntuales: se identifica individualmente como anomalía al residir fuera de la región normal de puntos.
+- contextual: una instancia puede ser anómala en un contexto y no en otro. Sus atributos se dividen en /contextuales/ y /conductuales/, una instancia idénticas en cuanto a atributos conductuales a otra normal podría ser identificada como anomalía según sus atributos contextuales.
+- colectivas: son colecciones de instancias relacionadas anómalas con respecto al resto del conjunto; individualmente no lo son pero en secuencia o agrupadas constituyen una anormalidad.
+
+**** Salida de un método
+
+Puede ser una etiqueta en el conjunto {normal, anomalía} o una probabilidad de que el dato sea anómalo.
+
+
+** Métodos supervisados
+
+La clasificación es una tarea ampliamente estudiada, con multitud de clases de métodos que permiten abordarla. Entre ellas, las redes neuronales, las redes bayesianas, las máquinas de soporte vectorial y kNN. Asumiendo que es posible entrenar un clasificador que distinga ejemplos de tipo anómalo para un problema dado, no se puede evaluar con una medida clásica de accuracy porque generalmente no aprenderá las anomalías sino que optará por clasificar todo con la clase negativa. Es necesario enfocar el problema como uno de clasificación desbalanceada.
+
+Hay dos aproximaciones a la clasificación desbalanceada, métodos basados en transformaciones de los datos y métodos basados en modificaciones a los algoritmos base.
+
+*** Transformaciones (/instance-based/)
+
+A continuación se enumeran diversas alteraciones de los datos que facilitan que el algoritmo aprenda las anomalías.
+
+**** Bajomuestreo: Tomek links
+
+Se emparejan anomalías e instancias cercanas de la clase mayoritaria, eliminando dichas instancias.
+
+**** Bajomuestreo: Condensed nearest neighbor
+
+Elimina instancias de la clase mayoritaria que no aportan información adicional de forma que el algoritmo se fije en las zonas difíciles, donde concurren instancias de ambas clases. Se puede hibridar con Tomek links.
+
+**** Sobremuestreo
+
+Introduce instancias artificiales de la clase minoritaria. La técnica más popular para el sobremuestreo es SMOTE, que genera instancias sintéticas interpolando entre instancias minoritarias cercanas.
+
+*** Algoritmos (/algorithm-based/)
+
+En este apartado se mencionan ajustes para que el algoritmo trabaje con los datos sin alterar.
+
+**** Métodos sensibles al coste
+
+Aumenta en gran medida el coste de clasificación errónea de una anomalía.
+
+**** Bagging y boosting
+
+En bagging se entrenan varios clasificadores sobre distintos subconjuntos de los datos. En particular, se pueden introducir más instancias minoritarias en dichos subconjuntos.
+
+Boosting itera algoritmos de clasificación, aumentando el coste de las instancias donde los algoritmos anteriores han fallado.
+
+**** Otras adaptaciones
+
+Existen tipos de redes neuronales, como las Replicator neural networks [fn:2] que se adaptan al problema de detección de anomalías. También hay variaciones de métodos basados en reglas, SVMs con kernels que abordan problemas complejos, etc.
+
+*** Evaluación
+
+Accuracy es una medida que da un voto a cada instancia. Si la clase positiva está presente en pocas instancias, accuracy no aporta mucho significado sobre el rendimiento de un clasificador. Es conveniente usar medidas que den similar importancia a ambas clases, como Recall, Precision, F-measure, o la curva ROC.
+
+** Métodos semisupervisados
+
+Cuando no se dispone de datos anómalos en el conjunto de entrenamiento, es precisa la aplicación de métodos semisupervisados que adquieran un modelo de los datos ``normales'' para poder detectar posteriormente los anómalos.
+
+*** Basados en clasificación
+
+Un enfoque puede consistir en aplicar un clasificador y etiquetar todos los errores como anomalías. Como consecuencia se pueden obtener muchos falsos positivos, por lo que sería necesario ajustar el umbral de detección de dichas anomalías.
+
+Existen técnicas probabilísticas como modelos de Markov y métodos bayesianos que pueden modelar estos problemas. Por ejemplo, en una cadena de Markov se podría considerar como anomalía una secuencia de varios pasos con muy baja probabilidad. 
+
+*** Basados en reglas
+
+Se busca la generación de reglas para las que sea muy poco probable su negación. De esta forma, tendrán fuerte poder predictivo para evaluar si un caso en el que no se verifiquen es anómalo. La probabilidad de que no se dé el consecuente dado el antecedente se puede estimar como $p=\frac r n$ donde $r$ es el número de ítems en el consecuente y $n$ es el soporte.
+
+*** Basados en kernels
+
+Asumiendo que sólo hay una clase mayoritaria, y que se puede encerrar bajo una frontera, se utilizan SVMs con kernels que generen envolventes convexas alrededor de los datos (support vector data description). Cuanto más se aleje un nuevo dato de la frontera, con más confianza se puede considerar una anomalía.
+
+** Métodos no supervisados
+
+Al utilizar técnicas de aprendizaje no supervisado sobre el problema, asumimos que contamos con anomalías en el conjunto de entrenamiento pero no están etiquetadas como tales. Los métodos deberán, por tanto, inferir qué tipos de datos son normales y cuáles son anómalos, simplemente a partir de la similaridad entre los propios datos. En esta situación se pueden distinguir tres enfoques: gráficas y estadísticas, basadas en vecinos más cercanos y basadas en agrupamiento.
+
+*** Métodos gráficos y estadísticos
+
+Una opción a la hora de buscar anomalías o /outliers/ es analizar el conjunto de datos visualmente y con técnicas estadísticas. Como inconvenientes, visualmente se pueden analizar 2 o a lo sumo 3 dimensiones, y al contar con un humano puede ter una tarea muy costosa en tiempo y con resultados subjetivos.
+
+**** Visualización en nubes de puntos
+Reduciendo dimensiones con PCA. Al perder información, no podremos asegurar que los puntos que parezcan normales al proyectar no son outliers.
+
+**** No paramétricos
+  Para 1 dimensión, se dice que un punto $P$ es outlier si $P > Q_3 + 1.5 \mathit{IQR}$ o $P > Q_1 - 1.5 \mathit{IQR}$, y outlier extremo con 3 en lugar de 1.5, donde $\mathit{IQR}$ es el rango intercuartílico.
+
+**** Paramétricos, para 1 variable
+
+Existen varios tests que se pueden aplicar:
+  - test de Grubb para la distribución normal (hipótesis alternativa: hay exactamente 1 outlier). Si hay más de 1 outlier, se da el masking (un outlier encubre a otro).
+  - test de Tietjen and Moore (hipótesis alternativa: hay exactamente k outliers). Si hay suficientes outliers pueden pasar el test sin llegar a ser k (/swamping/).
+  - test de Rosner's (hipótesis alternativa: hay k o menos outliers), aplica los tests anteriores usando modificando el $\alpha$ para evitar el family-wise experimental error.
+
+**** Paramétricos, para p dimensiones
+Un outlier multivariante es una combinación anormal de los valores de las variables.
+
+ La distancia de Mahalanobis mide la distancia de un punto al centro de la distribución, con una medida que tiene en cuenta la distribución de los datos y la correlación de las variables.
+
+ Un posible test de hipótesis: se calculan las distancias de Mahalanobis al centro (seguirán una distribución normal) y se hipotetiza si el valor máximo es un outlier. La distancia de Mahalanobis al cuadrado sigue una $\chi^2$. El problema de este método es que es necesaria una distribución inherente a los datos, la distancia de Mahalanobis no es muy robusta.
+
+En todos estos enfoques, es importante considerar estimadores robustos de la media, varianza, etc. cuando proceda. Su uso puede afectar notablemente a los puntos que son considerados outliers o no.
+
+*** Basados en vecinos más cercanos
+
+Aprovechar la distancia para computar una score de ``outlierness''. Algunos enfoques son:
+
+- Tomar la distancia al k-ésimo vecino más cercano como score. Problema: la elección de $k$ puede variar los resultados.
+- Fijar una distancia umbral y contar los puntos que están a esa distancia o más del actual.
+- Tomar la distancia a los k más cercanos y calcular la media. Problema: es sensible a zonas de distinta densidad.
+- LOF (Local Outlier Factor, 2000): toma media de las distancias a los k más cercanos, y divide entre la media de las distancias de esos k a sus respectivos k más cercanos (densidad k-relativa). Así se pueden comparar densidades.
+
+*** Métodos basados en clustering
+
+Asumiendo que se proporciona un clustering de los datos, tenemos las siguientes opciones:
+
+- Si un punto no pertenece a ningún cluster (p.ej. si el clustering lo generó DBSCAN) se considera como anómalo.
+- Tomar la distancia de un punto al centroide como score. La distancia euclídea produce sensibilidad ante la densidad. Mejor usar la distancia relativa a la media o mediana de las distancias del resto del cluster a su centroide.
+- Estudiar los puntos de ruido obtenidos en un clustering basado en densidad.
+- Cuando los clusters ya están hechos, la distancia de Mahalanobis sobre cada cluster, aunque computacionalmente costosa, sí puede aportar buenos resultados.
+
+*** Otros métodos
+
+Existen métodos de otros tipos que asumen distintas propiedades de las anomalías:
+
+- basados en Teoría de la información: suponen que las anomalías en los datos inducen irregularidades en el contenido de información del conjunto. Así, utilizan medidas como la entropía, la entropía relativa y la complejidad de Kolmogorov para analizar el contenido de información del data set.
+- espectrales: asumen que los datos se pueden proyectar a un subespacio de menor dimensión en el que las instancias normales y las anomalías se diferencien. Así, buscan una aproximación de los datos usando combinaciones de los atributos que contengan la variabilidad existente en los datos. Algunas técnicas usadas en este contexto son Robust PCA y Compact Matrix Decomposition.
+
+** Evaluación
+
+La común medida accuracy sólo contempla el total de aciertos, tanto de tipo anómalo como no anómalo, luego no es aplicable al problema de detección de anomalías. A continuación definimos algunas medidas que dan más importancia a la clase positiva (correspondiente a las anomalías). En principio asumiremos que contamos con un etiquetado de las anomalías en un conjunto de test, y que sólo tenemos dos clases (anomalía/no anomalía).
+
+*** Precision 
+
+Probabilidad de que una instancia predicha como anomalía lo sea realmente.
+$$\operatorname{Prec}=\frac{TP}{TP+FP}$$
+
+*** Recall (sensitivity, true positive rate)
+
+Probabilidad de predecir una anomalía real como anomalía.
+
+$$\operatorname{Rec}=\frac{TP}{TP + FN}$$
+
+*** F-Measure
+
+También conocida como $F_1 score$, es la media armónica de Precision y Recall:
+
+$$\operatorname{F_1}=\frac{2 \operatorname{Prec} \operatorname{Rec}}{\operatorname{Prec} +\operatorname{Rec}} = \frac{2 TP}{TP + FN + FP}$$
+
+Otras formas de medir el equilibrio entre Precision y Recall es la curva Precision/Recall (similar a la curva ROC pero representando estas dos medidas) y el ranking de verdaderos outliers. En este ranking se sitúan según score los datos predichos como positivos y se obtiene la posición de las verdaderas anomalías. Se puede dibujar Precision en función del Recall de los algoritmos que se están comparando.
+
+*** Base Rate Fallacy
+
+Importante considerar la prevalencia (probabilidad a priori) de los positivos (¿son positivos 1 de cada 10000? ¿1 de cada millón?) frente a la sensitividad (una sensitividad del 99% puede estar bien cuando la tasa de positivos es del 1%, pero no cuando es de 1 cada millón). Si la prevalencia es muy baja, habrá muchos falsos positivos (e.g. clasificación de gente en terrorista/no terrorista). Es conveniente mantener la tasa de falsas alarmas por debajo de un orden de magnitud superior a la probabilidad a priori de la ocurrencia de una anomalía.
+
+
+* Reglas de asociación
+
+** Introducción
+
+Dado un conjunto $I$ de ítems, una /regla de asociación/ es un par $(X, Y)$ con un antecedente $X\in\mathcal P(I)$ y un consecuente $Y\in\mathcal P(I)$ de forma que ningún item de $X$ está en $Y$: $X\cap Y = \emptyset$.  Notaremos $X\rightarrow Y$. A cada subconjunto de items se le denomina /itemset/. Las /transacciones/ representan casos particulares de una relación entre ítems (p.ej. ítems que se han dado a la vez). 
+
+La extracción de reglas es una tarea en minería de datos que trata de inferir conocimiento interesante de los datos en forma de reglas de asociación.
+
+Al abordar un problema de extracción de reglas, es importante determinar qué se considera un ítem y qué es una transacción. En bases de datos tabulares, podemos convertir cada instancia o ejemplo en varios ítems consistentes en un par (atributo, valor).
+
+** Medidas clásicas
+
+Para medir la presencia de reglas e itemsets en la base de datos, se utilizan el soporte y la confianza.
+
+*** Soporte
+
+Dado un itemset X, sop(X) = n. ocurrencias de X / total de transacciones en la BD. Dada una regla $(X\rightarrow Y)$, sop$(X\rightarrow Y)$ = sop$(X\cup Y)$. 
+
+*** Confianza
+
+Dada una regla $(X\rightarrow Y)$, conf(X\rightarrow Y)$ = $\frac{\mathrm{sop}(X\rightarrow Y)}{\mathrm{sop}(X)}$.
+
+Se suele establecer un mínimo de soporte y confianza, de forma que nos quedemos con las reglas que los superen. Generalmente el umbral de confianza ronda el 80%.
+
+
+*** Estrategias para extracción de reglas
+
+El objetivo general en una tarea de extracción de reglas será encontrar reglas que superen un umbral de soporte y confianza, posiblemente dados por un experto.
+
+La selección de reglas es intratable con fuerza bruta, ya que el conjunto de todas las reglas posibles tiene tamaño $2^d$ con $d$ el número de items.
+
+**** Complejidad
+
+Un primer enfoque sería generar todos los itemsets frecuentes y de ahí extraer las reglas que superen el umbral de confianza. En bases de datos la complejidad sería $\mathcal O(NMw)$, donde $N$ es el número de transacciones, $w$ el número de items por transacción y $M$ el número de itemsets candidatos por transacción. Posibles estrategias para reducirla:
+- reducir el número de candidatos (M) mediante técnicas de poda
+- reducir el número de transacciones (N): no hace falta comparar con transacciones de menos items que el tamaño del itemset
+- reducir número de comparaciones (NM) con estructuras de datos eficientes
+
+** Métodos clásicos
+
+*** Apriori
+
+El soporte verifica una propiedad denominada /antimonotonía/: $$(\forall X,Y: X\subset Y)\  s(X) \geq s(Y)~.$$
+
+Idea del algoritmo:
+- se empieza con 1-itemsets y se comprueba cuáles tienen el mínimo soporte
+- al pasar a 2-itemsets, se van combinando los 1-itemsets en orden
+- progresivamente, al combinar itemsets de cada nivel sólo se combinan itemsets que difieran en el último item (evita repeticiones)
+- para cada k-itemset que no cumpla el mínimo soporte, se descarta y deja de combinarse con otros
+
+Es un algoritmo muy ineficiente pero de los más populares. El grafo de las combinaciones se puede explorar en anchura y en profundidad.
+
+*** Eclat
+
+Mismo proceso que apriori pero para cada itemset almacena una /tid-list/ que indica las posiciones en la tabla de transacciones donde aparece el itemset. Agiliza el cálculo del soporte, ya que combinar esas listas es simplemente calcular su intersección, pero ocupa mucho más en memoria.
+
+*** FP-growth
+
+Crea una representación comprimida de la base de datos en un FP-tree. Un FP-tree contiene:
+- tabla cabecera: una entrada por item, cada entrada con una lista de todos los nodos del grafo donde aparece
+- grafo de transacciones: describe todas las transacciones, indicando en cada nodo el soporte del itemset que se forma siguiendo el camino desde la raíz hasta el nodo
+
+Se recorre la base de datos *una sola vez* para construir el FP-tree. Para recopilar itemsets frecuentes, se parte de las listas de la tabla cabecera para contar los 1-itemsets. Luego, se construyen nuevos FP-trees independientes para cada 1-itemset (tomando los ancestros del 1-itemset en las distintas ramas del FP-tree original).
+
+Es mucho más eficiente que los anteriores y permite paralelización ya que los FP-trees de cada 1-itemset son independientes (divide y vencerás).
+
+** Conjuntos maximales y cerrados
+
+El conjunto de todos los itemsets frecuentes puede ser demasiado grande para un uso práctico. Buscamos itemsets frecuentes que cumplan algunas propiedades para restringirnos a un subconjunto.
+
+**** Maximales
+
+Un itemset frecuente es maximal si es maximal en el grafo (si al añadir cualquier item, deja de ser frecuente).
+
+A partir de los itemsets maximales se pueden calcular todos los frecuentes. Sin embargo, no podemos recuperar el soporte de los subitemsets de un itemset maximal.
+
+**** Cerrados
+
+Un itemset frecuente es cerrado si al añadir cualquier item baja su soporte.
+
+Es obvio que los itemsets maximales están contenidos en los cerrados. Sin embargo, al usar los cerrados no hay que recalcular el soporte de ningún subitemset.
+
+** Generación de reglas
+
+Dado un itemset frecuente, todas las posibles reglas que surgen de la combinación de items como antecedente y consecuente son frecuentes. De entre ellas, nos quedaremos con las que tengan una confianza mayor o igual a un umbral. Hay dos opciones:
+- Frecuentemente, se generan reglas con un solo atributo en el consecuente (son más simples y sencillas)
+- Generar todas las reglas (hay $2^k-2$ si se ignoran las reglas $L\rightarrow \emptyset$ y $\emptyset\rightarrow L$)
+
+En este caso, la confianza no cumple la propiedad de anti-monotonía en general. Sin embargo, entre las reglas generadas por un mismo itemset sí se da una propiedad similar:
+$$\mathrm{conf}(BCD\rightarrow A)\geq \mathrm{conf}(CD\rightarrow AB)\geq \mathrm{conf}(D\rightarrow ABC)$$
+Intuitivamente, las reglas más específicas tienen más posibilidades de ser fiables que las más generales.
+
+En consecuencia, una posible poda es la de las reglas ``más generales'' que una dada: si una regla no verifica el umbral de confianza, cualquiera más general que esta no hace falta comprobarla.
+
+** Problemas abiertos
+
+El ámbito de la extracción de reglas es muy amplio y da lugar a muchas variaciones en el problema, muchas de las cuales no tienen aún claras soluciones. 
+
+**** Reglas de asociación cuantitativas y difusas
+
+Todas las reglas que se han visto son binarias, pero en problemas reales son más comunes las variables con valores cuantitativos, y reales. Comúnmente el tratamiento de estas variables pasa por dividir su dominio en intervalos (precisos o difusos), bien definidos a priori o bien encontrados por el algoritmo para maximizar la bondad de las reglas encontradas.
+
+**** Reglas jerárquicas
+
+Los items están jerarquizados y se buscan reglas a cierto nivel de granularidad.
+
+**** Medidas de calidad
+
+Problemas:
+- Los itemsets con soporte muy alto no aportan demasiada información
+- La confianza no tiene en cuenta el soporte del consecuente
+
+Algunas medidas extra complementan los resultados: lift, factor de certeza...
+
+lift es una medida entre 0 e infinito: 1 indica independencia, $]0,1[$ indica dependencia negativa y $]1,\infty[$ dependencia positiva. Las dependencias negativas pueden aportar información, aunque sean fáciles de descartar.
+
+** Aplicaciones
+
+**** Objetivos
+- Aportar conocimiento que ayude a la toma de decisiones.
+- Comprender mejor los procesos que generaron los datos.
+- También pueden usarse para predecir/deducir.
+
+**** Aplicaciones específicas
+- Extracción de conocimiento a partir de datos bancarios
+- Extracción de patrones a partir de sensores (p.ej. en una turbina de viento, vías de ferrocarril)
+- Asociación de términos en minería de textos
+- Asociación de información en redes sociales (minería social)
+- Big Data: tratamiento de bases de datos de grandes volúmenes
+- Minería en web: asociación de comportamientos, patrones secuenciales...
+
+* Reglas de asociación: Aspectos avanzados
+
+** Problemas de interpretabilidad
+
+A la hora de interpretar los resultados de una extracción de reglas se pueden presentar distintos problemas derivados de datos, usuarios y medidas.
+
+*** Derivados de los datos
+
+Las reglas de asociación son de tipo implicación entre presencias conjuntas de ítems en transacciones. No representan implicaciones lógicas sino tendencias.
+
+Una regla siempre está asociada al conjunto de transacciones del que se ha obtenido: si los datos no son apropiados, las reglas pueden ser dudosas. Una regla no tiene por qué ser extrapolable a situaciones no relacionadas con el conjunto de transacciones original.
+
+- Falta de variabilidad (si un ítem es muy poco frecuente o muy frecuente, puede generar reglas de bajo interés)
+- Representatividad (los datos deben comprender los casos que se quieren estudiar)
+- Sesgos muestrales (p.ej. seleccionar el conjunto de compras de diciembre para intentar representar las de todo el año)
+- Factores ocultos (p.ej. estacionalidad, items no considerados)
+- Valores perdidos en los datos
+
+*** Derivados de los usuarios
+
+Los usuarios pueden confundir el significado de las reglas, por ejemplo, pensando que representan
+- dependencias simétricas, 
+- implicaciones estrictas,
+- causalidad.
+
+Para analizar la causalidad, es conveniente realizar análisis de grupos de reglas.
+
+*** Derivados de las medidas
+
+Los soportes altos dan lugar a reglas que son dudosas.
+
+Las confianzas están basadas en frecuencias, y no detectan cuándo el soporte del consecuente es muy alto. Cuando la confianza está por encima del umbral mínimo, no la ha detectado como mala pero no nos asegura que sea buena. Hay muchas medidas propuestas pero ninguna da información completa.
+
+** Evaluación: Medidas de interés
+
+En este apartado se estudian algunas medidas alternativas que proporcionan más información acerca de la bondad de las reglas de asociación calculadas. 
+
+*** Medidas objetivas
+
+Suelen tener un significado estadístico y estar basadas en cálculo de frecuencias.
+
+**** Propiedades deseables
+
+Según Piatetsky-Shapiro, para una medida $l$ es deseable:
+1. $l(A\rightarrow C)=0$ cuando son independientes ($P(A\rightarrow C)=P(A)P(C)$)
+2. $l(A\rightarrow C)$ tiene crece monótonamente con $\operatorname{sop}(A\rightarrow C)$ cuando se mantiene el resto de valores
+3. $l(A\rightarrow C)$ decrece monótonamente con $\operatorname{sop}(A)$ o $\operatorname{sop}(C)$ supuestos fijos el resto de valores
+
+**** Confianza confirmada
+
+$$\text{conf}(A\rightarrow C) - \text{conf}(A\rightarrow \neg C)$$
+
+Cuando vale 0 hay independencia, positiva si $A$ predice $C$ y negativa si predice $\neg C$.
+
+**** Lift/interés
+
+$$\frac{\mbox{conf}(A\rightarrow C)}{\mbox{sop}(C)}$$
+
+Valor 1 significa independencia. Menores dependencia negativa, superiores dependencia positiva. La semántica no es de implicación (es simétrica), sino de variación en la creencia: nuestra expectativa de que $C$ ocurra "aumenta" o "disminuye" al introducir $A$.
+
+**** Convicción
+
+$$\frac{P(A)P(\neg C)}{P(A\rightarrow \neg C)}$$
+
+De nuevo, 1 significa independencia, $>1$ implica dependencia positiva y $<1$ dependencia negativa. Los valores interesantes de esta medida son entre 1.01 y 5.
+
+**** Factor de certeza
+
+\[
+\mathit{FC}(A\rightarrow C)=\begin{cases}
+\frac{\mathrm{conf}(A\rightarrow C) - \mathrm{sop}(C)}{1 - \mathrm{sop}({C})} & \mbox{si }\mathrm{conf}(A\rightarrow C) \geq \mathrm{sop}(C) \\
+\frac{\mathrm{conf}(A\rightarrow C) - \mathrm{sop}(C)}{1\mathrm{sop}(C)} & \mbox{si }\mathrm{conf}(A\rightarrow C) < \mathrm{sop}(C)
+\end{cases}
+\]
+
+Compara la confianza con el soporte del consecuente y normaliza. Proviene del ámbito de los sistemas expertos.  Tiene un significado similar al lift. El rango es $[-1,1]$ y tiene relaciones con lift y convicción.
+
+**** Yule's Q
+
+$$Q(A\rightarrow C)=\frac{P(AC)P(\neg A\neg C)-P(A \neg C)P(\neg A C)}{P(AC)P(\neg A\neg C)+P(A \neg C)P(\neg A C)}$$
+
+Representa la correlación entre dos eventos dicotómicos relacionados positivamente. El rango es $[-1,1]$, con 0 significando la independencia.
+
+**** Diferencia absoluta de confianza
+
+Factor de certeza sin normalizar: $\mathrm{conf}(A\rightarrow C)- \mathrm{sop}(C)$.
+
+**** Ratio de confianza
+
+$$1-\frac{\mathrm{conf}(A\rightarrow C)}{ \mathrm{sop}(C)}$$
+
+**** Diferencia de información
+
+Se basa en Teoría de la información, mide la ganancia o pérdida de información sobre C al conocer A.
+
+*** Medidas subjetivas
+
+**** Utilidad
+
+Conviene tener en cuenta a la hora de considerar una regla:
+- restricciones, 
+- tiempo de vida, 
+- esfuerzo, 
+- efectos laterales, 
+- impacto, 
+- prontitud.
+
+**** Reglas inesperadas
+
+Las reglas más interesantes son aquellas que son contraintuitivas y que aportan evidencia para sostener un conocimiento en el que a priori no se tendría creencia.
+
+Para medir la ``novedad'' de una regla se han usado redes bayesianas, medidas de la distancia entre nuevas reglas y el conjunto de creencias, y contradicciones lógicas. Un tipo de contradicción son las paradojas, como la de Simpson.
+
+** Interpretaciones
+
+*** Marco formal de reglas de asociación
+
+Sea un conjunto $I$ de ítems, un multiconjunto $T\subset\mathcal P(I)$ de transacciones. Una regla de asociación es un par notado $A\rightarrow C$ donde $A,C\subset I$ y $A\cap C = \emptyset$.
+
+Una /interpretación/ es una correspondencia entre los datos y estos conceptos abstractos.
+
+*** Interpretación tabular común
+
+Interpretación donde los items son parejas (atributo, valor) y las transacciones son registros (filas de la tabla).
+
+*** Interpretación de ítems negados
+
+Considerar como ítems las columnas $i_1,i_2\dots,\neg i_1,\neg i_2\dots$ y como transacciones las filas, donde un ítem $i$ está en la transacción si su valor es 1, y en el caso contrario está su negación.
+
+*** Interpretación de reglas jerárquicas
+
+Extensión en la que se consideran una o varias jerarquías de ítems. Los ítems son la unión de los ítems básicos (atómicos) y cada una de las categorías de la jerarquía. Las transacciones se forman tomando cada transacción de ítems básicos y añadiendo sus ancestros en la jerarquía. Por ejemplo, si tenemos los ítems atómicos {ordenador-de-sobremesa, impresora} la transacción será {ordenador-de-sobremesa, impresora, ordenador, accesorio, electrónica}.
+
+Es importante no generar reglas en las que un ítem implique un ancestro suyo, que son obvias y no añaden información.
+
+*** Interpretación de reglas/patrones secuenciales
+
+Un patrón secuencial es una secuencia de itemsets básicos que tienden a aparecer en un orden prefijado.
+
+Los ítems son secuencias ordenadas de itemsets básicos. Las transacciones son conjuntos de secuencias.
+
+Ejemplos:
+- {A}{B}\rightarrow{C} (si sucedió A y después B, entonces posteriormente se dará C)
+- {A, B}\rightarrow{C} (si se dio A y B conjuntamente, entonces se dará C después)
+
+Del texto  ``minería de datos'', las secuencias válidas no atómicas son {minería}{de}, {minería}{datos}, {de}{datos}, pero no {datos}{minería}.
+
+*** Reglas cuantitativas
+
+Cuando los datos tienen valores numéricos con un dominio grande/continuo. Una solución es discretizar en intervalos. Hay dos enfoques:
+- definir los intervalos a priori (con conocimiento experto)
+- utilizar un método automático (se pueden aprender primero los intervalos o bien escogerlos de forma que las reglas aprendidas tengan buen soporte y confianza).
+
+En este caso, los ítems serían pares (atributo, intervalo).
+
+No es necesario que los intervalos formen una partición. Basta con que formen un recubrimiento (se pueden solapar los intervalos).
+
+*** Dependencias aproximadas
+
+Dependencia funcional: $\forall t,s\in r~ t[V]=s[V]\Rightarrow t[W]=s[W]$. En el caso de reglas de asociación las dependencias pueden presentar excepciones.
+
+En esta interpretación los ítems son los atributos, y las transacciones están asociadas a pares de filas de la base de datos. El ítem asociado al atributo $V$ está en la transacción asociada al par de tuplas $(t,s)$ si y solo si $t[V]=s[V]$.
+
+*** Dependencias graduales
+
+Similares a las dependencias aproximadas, pero en lugar de comparar si los valores de dos variables son iguales, comparan si son mayores o menores.
+
+** Reglas de asociación difusas
+
+Las reglas de asociación difusas aparecen cuando se consideran conjuntos difusos a la hora de definir alguno de los conceptos relacionados con las reglas (e.g. ítems, transacciones).
+
+*** Introducción a teoría de conjuntos difusos
+
+Los conjuntos difusos sirven para representar conceptos. Un conjunto clásico puede describir conceptos: e.g. si el conjunto altura describe el rango $[0,300]$, podríamos definir el concepto "ser alto" como un subconjunto, por ejemplo, $[170,300]$. El problema reside en la frontera: individuos de 169cm y 170cm serán muy parecidos y se deberían describir bajo el mismo concepto. De aquí que se busque que la diferencia entre pertenencia y no pertenencia a un concepto sea gradual.
+
+Similarmente a cómo un subconjunto de $S$ se puede describir como una función $f\in 2^S : S\rightarrow \{0,1\}$, un subconjunto difuso se puede representar como una función $g\in [0,1]^S:S\rightarrow [0,1]$. Así, un individuo $s\in S$ puede "estar" en el concepto difuso dado por $g$ en un grado $g(s)$, no únicamente una pertenencia binaria.
+
+*** Ejemplo derivado de reglas cuantitativas
+
+Cuando un atributo tiene un dominio continuo, podemos construir una partición en intervalos. Los límites de los intervalos pueden introducir mucha variabilidad a las reglas deducidas, ya que la distribución de los datos en el rango completo puede estar muy lejos de la uniforme.
+
+Por otro lado, semánticamente puede que no interesen las reglas exactas dadas por los intervalos clásicos. Si las reglas que queremos deducir pueden ser graduales.
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.7\textwidth]{Fuzzy.jpg}
+\caption{\label{fig.fuz}Ejemplo de una serie de intervalos difusos cubriendo el rango $[0,120]$. El gráfico muestra el valor de la función pertenencia a cada conjunto difuso}
+\end{figure}
+
+*** Reglas difusas
+
+En este caso, en lugar de que $i\in T$ o $i\notin T$ para ítem $i$ y transacción $T$, se tendrá una función $t$ valuada en $[0,1]$ de forma que $t(i)$ describa el grado en que $i$ está en la transacción $T$. Es necesario redefinir el soporte de un ítem, de un itemset y de una regla.
+
+
+** Aspectos algorítmicos. Reglas de asociación jerárquicas
+
+En ocasiones, al seleccionar el algoritmo a aplicar habrá que tener en cuenta la interpretación de los datos. Por ejemplo, en reglas jerárquicas se construirían muchas reglas obvias (e.g. pan de molde \rightarrow pan) con un enfoque normal. Una técnica para esta situación es buscar los itemsets frecuentes dentro de cada nivel (en lugar de mezclar niveles). Para evitar aún más reglas obvias, otras estrategias se basan en ir reduciendo el soporte nivel a nivel con algunas variaciones (/level by level independent/, /level-cross filtering by k-itemset or by single item/ y /controlled level-cross filtering by single item/).
+
+** Evaluación de reglas por grupos
+
+Hasta ahora, las reglas se han evaluado de forma individual mediante varias medidas. Sin embargo, también es interesante tomar una regla que en principio no descartaríamos y buscar otras reglas que tengan relación, pudiendo definir otros tipos de patrones o una semántica más rica de patrón que únicamente la de las interpretaciones.
+
+El análisis de reglas por grupos puede permitir descartar una regla en función de otras, determinar su semántica...
+
+Ejemplos: estudiar simultáneamente
+- $A\rightarrow C$ con $A\rightarrow \neg C$: en este caso, ambas reglas son menos interesantes, ya que se contradicen
+- $A\rightarrow C$ con $\neg C\rightarrow \neg A$ (contrarrecíproca): se trata de reglas lógicamente equivalentes; sin embargo, al deducirlas como reglas de un conjunto de datos, la bondad de una de estas reglas no condicionan la de la otra (ya que vienen dadas por subconjuntos distintos de reglas). Si encontramos ambas reglas, refuerzan la información que da cualquiera de ellas, ya que no es trivial encontrar la segunda cuando se cumple la primera. Se puede afirmar que distintas partes de los datos nos dan más evidencia empírica para el mismo patrón.
+- $A\rightarrow C$ con $C\rightarrow A$, para determinar relaciones simétricas.
+
+Descarte de causalidad: si encontramos $C\rightarrow D$ buscaremos $A$ tal que $A\rightarrow C \wedge A\rightarrow D$, de forma que descarte o ponga en duda la causalidad de C a D. La búsqueda de relaciones causales no sólo se efectúa con reglas sino también con otras técnicas como redes bayesianas.
+
+Un ámbito de estudio antiguo en el de reglas es la actualización de las medidas de evaluación del conjunto de reglas encontradas conforme se añaden nuevos datos a lo largo del tiempo.
+
+*** Patrones derivados de reglas
+
+Patrones que se definen a partir de grupos de reglas:
+- Excepciones: es un par de reglas $A \rightarrow C$ (fuerte) y $A,B\rightarrow \neg C$ (con alto cumplimiento aunque bajo soporte). Se puede interpretar como "A induce C, salvo en el caso en que se dé conjuntamente B".
+- Anomalías: es una terna de reglas $A \rightarrow C$ (fuerte), $A,\neg C \rightarrow B$ (alto cumplimiento, bajo soporte) y $A, C \rightarrow\neg B$. Se lee como "A determina C, y en aquellos casos donde A no determina C, ocurre B"/"A se asocia a C, y de manera anómala a B".
+
+Las excepciones y anomalías se pueden describir con otros grupos de reglas, estos son ejemplos comunes.
+
+
+*** Clasificadores construidos con reglas
+
+Construir un clasificador a partir de un conjunto de reglas no es trivial. No basta con tomar todo el conjunto de reglas, sino que será necesario seleccionarlas y estructurarlas, posiblemente de forma jerárquica formando una estructura (lista o árbol) de decisión.
+
+Se puede ver el clasificador como un nuevo patrón derivado de las reglas.
+
+* Footnotes
+
+[fn:1] K. Beyer, J. Goldstein, R. Ramakrishnan, A. Shaft (1999). When is nearest neighbor meaningful? In International conference on database theory. Springer. pp. 217-235.
+
+[fn:2] S. Hawkins, H. He, G. Williams, R. Baxter (2002). Outlier detection using replicator neural networks. In International Conference on Data Warehousing and Knowledge Discovery (pp. 170-180). Springer.
+
