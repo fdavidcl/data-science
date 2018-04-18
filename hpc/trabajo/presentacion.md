@@ -2,8 +2,8 @@
 title: Parallel alternatives for evolutionary multi-objective optimization in unsupervised feature selection
 date: High Performance Computing for Classification and Optimization
 author: David Charte
-theme: metropolis
-font: Fira Sans
+header-includes:
+  - \input{_preamble.tex}
 ---
 
 # Introducción
