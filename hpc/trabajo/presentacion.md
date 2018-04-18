@@ -1,7 +1,7 @@
 ---
-title: Parallel alternatives for evolutionary multi-objective optimization in unsupervised feature selection
+title: "Parallel alternatives for evolutionary multi-objective optimization in unsupervised feature selection\\newline Kimovski, Ortega, Ortiz y Baños"
 date: High Performance Computing for Classification and Optimization
-author: David Charte
+author: Resumen y comentario por David Charte
 header-includes:
   - \input{_preamble.tex}
 ---

@@ -1,6 +1,5 @@
 #+title: Parallel alternatives for evolutionary multi-objective optimization in unsupervised feature selection
-#+subtitle: Resumen y comentario
-#+author: David Charte
+#+author: Resumen y comentario -- David Charte
 
 
 * Resumen
