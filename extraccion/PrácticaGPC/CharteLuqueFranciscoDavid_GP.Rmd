@@ -1,0 +1,185 @@
+---
+title: "GPC"
+author: "Francisco David Charte Luque"
+date: "Extracción de Características en Imágenes, curso 2017-2018"
+output: 
+  pdf_document: 
+    keep_tex: yes
+fontsize: 12pt
+header-includes:
+  - \usepackage{booktabs}
+  - \usepackage[spanish]{babel}
+  - \addto\captionsspanish{\renewcommand{\tablename}{{Tabla}}}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = F, message=FALSE, warning=FALSE, fig.pos="htbp")
+source("gpc.R")
+```
+
+# ¿Qué es un proceso gaussiano?
+
+Un proceso gaussiano es una familia de variables aleatorias de forma que cualquier subconjunto finito suyo tiene una distribución normal multivariante. La distribución conjunta de todas las variables tiene un dominio continuo.
+
+Los procesos gaussianos se pueden utilizar para regresión, viéndose como una extensión de la regresión no lineal bayesiana en la que se hace uso de funciones kernel para pasar los datos de un espacio de dimensión finita a dimensión infinita. En este caso, la distribución predictiva para un nuevo dato $x^*$ y kernel dado por $K$ es:
+\begin{multline}
+Pr(w^*\vert x^*,X,w)=
+\mathcal{N}_{w^*}\left[
+  \frac{\sigma^2_p}{\sigma^2}
+  K[x^*,X]w -
+  \frac{\sigma^2_p}{\sigma^2}
+  K[x^*,X] \left(
+    K[X,X]+
+    \frac{\sigma^2_p}{\sigma^2} I
+  \right)^{-1}
+  K[X,X]w,\right.\\\left.
+  \sigma^2_p
+  K[x^*,x^*]-
+  \sigma^2_p
+  K[x^*,X] \left(
+    K[X,X]+
+    \frac{\sigma^2_p}{\sigma^2} I
+  \right)^{-1}
+  K[X,x^*]-
+  \sigma^2
+\right]~.
+\end{multline}
+
+# Software utilizado para la realización de la práctica
+
+La librería usada en esta práctica ha sido GPy[^gpy], que implementa procesos gaussianos en Python. El software adicional usado ha sido:
+
+- R.matlab[^rmat]: implementa lectura y escritura de datos de tipo Matlab para R.
+- reticulate[^reti]: una interfaz de R a Python, para hacer uso de GPy desde R.
+- pROC[^proc]: paquete de R para cálculo de la curva ROC y el área bajo la curva (AUC).
+
+[^gpy]: Página oficial: <https://sheffieldml.github.io/GPy/>. Documentación: <https://gpy.readthedocs.io/>
+[^rmat]: Página web: <https://cran.r-project.org/package=R.matlab>
+[^reti]: Página web: <https://rstudio.github.io/reticulate/>
+[^proc]: Página web: <https://cran.r-project.org/package=pROC>
+
+La librería GPy contiene una clase, `GPy.GPClassification`, cuyos objetos representan modelos de proceso gaussiano específicos para clasificación, por lo que se ha usado para aprender los clasificadores necesarios. Esta clase ajusta algunos parámetros del modelo por defecto, y permite seleccionar el kernel a usar. En este caso se ha realizado la experimentación con dos kernels:
+
+- Lineal (`GPy.kern.Linear`) con parámetros por defecto
+- Gaussiano (`GPy.kern.RBF`) con la varianza ajustada inicialmente a 1.9 y la escala a 1.0
+
+Cada uno de los modelos resultantes se han optimizado con el algoritmo L-BFGS[^lbfgs], durante un máximo de 10000 iteraciones (que no se habrán llegado a utilizar en general). A continuación, puesto que se han generado 4 clasificadores por fold, se han obtenido y promediado las probabilidades predichas para las instancias de test. Las predicciones finales se han calculado con el umbral 0.5.
+
+[^lbfgs]: Liu, D. C., & Nocedal, J. (1989). On the limited memory BFGS method for large scale optimization. Mathematical programming, 45(1-3), 503-528.
+
+# Resultados experimentales
+
+En los siguientes apartados se listan y discuten los resultados obtenidos a partir de la ejecución de procesos gaussianos con dos kernels: lineal y gaussiano (RBF).
+
+## Kernel lineal
+
+```{r exe, cache=TRUE}
+# Carga de datos ----------------------------------------------------
+folds <- R.matlab::readMat("Datos.mat")
+
+# Para cada índice concatena el resto de folds para entrenamiento
+train <- map(1:5, ~ concatenateFolds(folds, (1:5)[-.]))
+
+# Obtiene cada fold de test con la misma normalización que el
+# correspondiente fold de train
+test <- map(
+  1:5,
+  ~ concatenateFolds(
+    folds,
+    .,
+    center = train[[.]]$x %@% "scaled:center",
+    scale = train[[.]]$x %@% "scaled:scale"
+  )
+)
+
+# Comprobación de dimensiones
+train %>% map( ~ dim(.[[1]])) %>% message()
+test %>% map( ~ dim(.[[1]])) %>% message()
+
+# Entrenamiento y predicción
+probs <- cross_validation(train, test, classifier_linear)
+preds <- map(probs, round)
+```
+
+La tabla 1 contiene las matrices de confusión de las predicciones generadas por los clasificadores para cada uno de los folds. La etiqueta 0 representa los ejemplos negativos (no cancerígenos) y la 1 los positivos (cancerígenos). En la tabla 2 se recogen las distintas medidas de evaluación a partir de estos resultados. La figura 1 muestra las curvas ROC para cada fold.
+
+\begin{table}[htbp]
+\centering
+```{r conf_lin, results='asis'}
+confmats <- map(1:5,  ~ table(true = test[[.]]$y, predicted = preds[[.]]))
+
+cat(reduce(confmats, ~ paste(..1, knitr::kable(..2, format = "latex", booktabs = TRUE)), .init = ""))
+```
+\caption{Matrices de confusión para cada fold. El eje horizontal representa los valores predichos y el vertical los valores verdaderos.}
+\end{table}
+
+\begin{table}[htbp]
+\centering
+```{r eval_lin, results='asis'}
+roc_curve <- map(1:5, ~ roc(as.integer(test[[.]]$y), probs[[.]]))
+eval_measures <- map(1:5, ~ measures(test[[.]]$y, preds[[.]]))
+aucs <- map(roc_curve, auc)
+eval_measures <- map2(eval_measures, aucs, ~ c(..1, auc = ..2))
+eval_measures_lin <- eval_measures
+
+cat(reduce(eval_measures, ~ paste(..1, knitr::kable(..2, col.names = "valor", digits = 4, format = "latex", booktabs = TRUE)), .init = ""))
+```
+\caption{Medidas de evaluación para cada fold. Leyenda: 'acc' tasa de acierto, 'pre' precisión, 'rec' sensibilidad, 'spe' especificidad, 'f1' F1 score, 'auc' área bajo la curva ROC.}
+\end{table}
+
+```{r roc_lin, fig.cap="Curvas ROC de cada uno de los folds de test", fig.width=10, fig.height=2, out.height="0.2\\textwidth", out.width="\\textwidth", fig.align="center"}
+layout(matrix(1:5, byrow = T, nrow = 1))
+for (i in 1:5)
+  plot(roc_curve[[i]])
+```
+
+Una observación que se puede realizar a partir de las matrices de confusión es que los clasificadores con kernel lineal tienen muy en cuenta la cantidad de datos de cada clase en los conjuntos de entrenamiento. Al entrenar varios clasificadores con subconjuntos balanceados, estos clasifican muchas más instancias como positivas de las reales en test. Por contra, la tasa de falsos negativos es muy baja. En consecuencia, hay una fuerte disparidad entre las medidas Precision y Recall (o sensibilidad), ya que la primera tiene en cuenta todas las instancias predichas positivas y la segunda todas las positivas del conjunto de test.
+
+## Kernel gaussiano
+
+De nuevo, las tablas 3 y 4 y la figura 2 recogen los mismos resultados correspondientes al uso del kernel gaussiano.
+
+```{r exeg, cache=TRUE}
+# Entrenamiento y predicción
+probs <- cross_validation(train, test, classifier_gaussian)
+preds <- map(probs, round)
+```
+
+\begin{table}[htbp]
+\centering
+```{r conf_g, results='asis'}
+confmats <- map(1:5,  ~ table(true = test[[.]]$y, predicted = preds[[.]]))
+
+cat(reduce(confmats, ~ paste(..1, knitr::kable(..2, format = "latex", booktabs = TRUE)), .init = ""))
+```
+\caption{Matrices de confusión para cada fold. El eje horizontal representa los valores predichos y el vertical los valores verdaderos.}
+\end{table}
+
+\begin{table}[htbp]
+\centering
+```{r eval_g, results='asis'}
+roc_curve <- map(1:5, ~ roc(as.integer(test[[.]]$y), probs[[.]]))
+eval_measures <- map(1:5, ~ measures(test[[.]]$y, preds[[.]]))
+aucs <- map(roc_curve, auc)
+eval_measures <- map2(eval_measures, aucs, ~ c(..1, auc = ..2))
+
+cat(reduce(eval_measures, ~ paste(..1, knitr::kable(..2, col.names = "valor", digits = 4, format = "latex", booktabs = TRUE)), .init = ""))
+```
+\caption{Medidas de evaluación para cada fold. Leyenda: 'acc' tasa de acierto, 'pre' precisión, 'rec' sensibilidad, 'spe' especificidad, 'f1' F1 score, 'auc' área bajo la curva ROC.}
+\end{table}
+
+```{r roc_g, fig.cap="Curvas ROC de cada uno de los folds de test", fig.pos="htbp", fig.width=10, fig.height=2, out.height="0.2\\textwidth", out.width="\\textwidth", fig.align="center"}
+layout(matrix(1:5, byrow = T, nrow = 1))
+for (i in 1:5)
+  plot(roc_curve[[i]])
+```
+
+Los resultados obtenidos con kernel gaussiano son, en casi todos los aspectos, mejores que los de kernel lineal: se mejoran la tasa de acierto, la precisión y la medida F1. El área bajo la curva promedio es `r mean(unlist(map(eval_measures, ~ .[6])))`, ligeramente superior al anterior (`r mean(unlist(map(eval_measures_lin, ~ .[6])))`). Sin embargo, se introducen algunos falsos negativos y se pierde algo de Recall. En aplicaciones como la detección de cáncer, los falsos negativos son mucho más peligrosos que los positivos luego lo ideal sería que la mejora de resultados no conllevase este perjuicio.
+
+Las curvas ROC señalan algo de variabilidad entre el fold segundo y el resto en la validación cruzada, fenómeno que también se observa en el caso del kernel lineal y se puede deber a que los datos de test en ese fold no sean tan representativos de la distribución general como el resto.
+
+## Relación con SVM
+
+Las máquinas de soporte vectorial (SVM) son clasificadores binarios que consisten, en su versión más básica, en generar un hiperplano que separe las clases bajo algún criterio. También pueden aprovechar el _kernel trick_ para generar los hiperplanos en espacios de dimensión infinita, de forma que al "traerlos" al espacio de los datos no sean subespacios lineales sino otras superficies.
+
+Por un lado, las SVM aportan cierta interpretabilidad al poder visualizarse en ocasiones cómo se separan las dos clases. Sin embargo, los procesos gaussianos parecen más versátiles al poder realizar no sólo clasificación binaria, sino otros tipos de clasificación o regresión. Los procesos gaussianos, además, dan información acerca de la incertidumbre de una predicción, mientras que las SVM son totalmente binarias: un punto sólo puede estar en una de las dos clases.
