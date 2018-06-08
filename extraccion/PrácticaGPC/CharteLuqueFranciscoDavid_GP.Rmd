@@ -65,6 +65,8 @@ La librería GPy contiene una clase, `GPy.GPClassification`, cuyos objetos repre
 
 Cada uno de los modelos resultantes se han optimizado con el algoritmo L-BFGS[^lbfgs], durante un máximo de 10000 iteraciones (que no se habrán llegado a utilizar en general). A continuación, puesto que se han generado 4 clasificadores por fold, se han obtenido y promediado las probabilidades predichas para las instancias de test. Las predicciones finales se han calculado con el umbral 0.5.
 
+El código utilizado al completo se puede encontrar en <https://github.com/fdavidcl/data-science/blob/master/extraccion/PrácticaGPC/gpc.R>.
+
 [^lbfgs]: Liu, D. C., & Nocedal, J. (1989). On the limited memory BFGS method for large scale optimization. Mathematical programming, 45(1-3), 503-528.
 
 # Resultados experimentales
